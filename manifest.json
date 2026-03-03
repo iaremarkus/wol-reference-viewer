@@ -1,0 +1,10 @@
+{
+  "id": "verse-popover",
+  "name": "Verse Popover",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Fetches a verse from wol.jw.org and displays it in a popver",
+  "author": "@iaremarkus",
+  "authorUrl": "https://github.com/iaremarkusdev",
+  "isDesktopOnly": false
+}
