@@ -144,3 +144,30 @@
     font-size: var(--font-ui-smaller);
 }
 
+/* WOL search result cards */
+.verse-sidebar-wol-result {
+    font-size: var(--font-ui-small);
+    line-height: 1.6;
+    color: var(--text-normal);
+    padding: 6px 0;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.verse-sidebar-wol-result:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.verse-sidebar-wol-result img {
+    max-width: 100%;
+    height: auto;
+}
+
+.verse-sidebar-wol-result a {
+    color: var(--text-accent);
+    text-decoration: none;
+}
+
+.verse-sidebar-wol-result a:hover {
+    text-decoration: underline;
+}

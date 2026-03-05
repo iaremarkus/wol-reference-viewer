@@ -1,6 +1,6 @@
 import { ItemView, TFile, WorkspaceLeaf, setIcon } from 'obsidian';
-import { VerseData } from './types';
-import { fetchVerse } from './verseService';
+import { ReferenceData } from './types';
+import { fetchReference } from './verseService';
 import { renderVerseText } from './verse-stylist';
 
 export const VIEW_TYPE_VERSE_SIDEBAR = 'verse-sidebar-view';
@@ -49,21 +49,23 @@ export class VerseSidebarView extends ItemView {
         this.renderPlaceholders(refs);
 
         for (const ref of refs) {
-            fetchVerse(ref).then(data => this.fillPlaceholder(ref, data));
+            fetchReference(ref).then(data => this.fillPlaceholder(ref, data));
         }
     }
 
     private extractRefs(content: string): string[] {
         const seen = new Set<string>();
         const refs: string[] = [];
-        let match;
         const regex = new RegExp(VERSE_REGEX.source, 'g');
+        let match;
 
         while ((match = regex.exec(content)) !== null) {
-            const ref = match[1].trim();
-            if (!seen.has(ref)) {
-                seen.add(ref);
-                refs.push(ref);
+            for (const part of match[1].split(';')) {
+                const ref = part.trim();
+                if (ref && !seen.has(ref)) {
+                    seen.add(ref);
+                    refs.push(ref);
+                }
             }
         }
         return refs;
@@ -98,7 +100,7 @@ export class VerseSidebarView extends ItemView {
         }
     }
 
-    private fillPlaceholder(ref: string, data: VerseData | null) {
+    private fillPlaceholder(ref: string, data: ReferenceData | null) {
         const item = this.contentEl.querySelector(
             `.verse-sidebar-item[data-verse-ref="${CSS.escape(ref)}"]`
         ) as HTMLElement | null;
@@ -109,11 +111,18 @@ export class VerseSidebarView extends ItemView {
 
         body.empty();
 
-        if (data) {
-            const p = body.createEl('p');
-            renderVerseText(p, data.text, ref);
+        if (!data) {
+            body.createEl('p', { text: 'Could not load reference.', cls: 'verse-sidebar-error' });
+        } else if (data.type === 'verse') {
+            renderVerseText(body.createEl('p'), data.text, ref);
         } else {
-            body.createEl('p', { text: 'Could not load verse.', cls: 'verse-sidebar-error' });
+            if (data.results.length === 0) {
+                body.createEl('p', { text: 'No results found.', cls: 'verse-sidebar-error' });
+            } else {
+                for (const html of data.results) {
+                    body.createDiv({ cls: 'verse-sidebar-wol-result' }).innerHTML = html;
+                }
+            }
         }
     }
 }

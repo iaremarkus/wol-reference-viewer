@@ -1,6 +1,7 @@
 import VersePlugin, { VerseDisplayOption } from './main';
 import { VerseModal } from './VerseModal';
 import { VersePopover } from './VersePopover';
+import { isBibleVerse } from './bibleBooks';
 
 export class VerseParser {
     private plugin: VersePlugin;
@@ -56,7 +57,9 @@ export class VerseParser {
 
             const verseRef = match[1];
             const verseElement = document.createElement('span');
-            verseElement.className = 'verse-reference';
+            verseElement.className = isBibleVerse(verseRef)
+                ? 'verse-reference'
+                : 'verse-reference wol-reference';
             verseElement.setAttribute('data-verse-ref', verseRef);
             verseElement.textContent = verseRef;
 

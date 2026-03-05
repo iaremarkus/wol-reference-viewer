@@ -24,28 +24,139 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian4 = require("obsidian");
 
+// bibleBooks.ts
+var BIBLE_BOOKS = {
+  "Genesis": ["Ge", "Gen", "Gene"],
+  "Exodus": ["Ex", "Exo", "Exod"],
+  "Leviticus": ["Le", "Lev", "Levi"],
+  "Numbers": ["Nu", "Num", "Numb"],
+  "Deuteronomy": ["De", "Deu", "Deut"],
+  "Joshua": ["Jo", "Jos", "Josh"],
+  "Judges": ["Jg", "Jud", "Judg"],
+  "Ruth": ["Ru", "Rut"],
+  "1 Samuel": ["1Sa", "1Sam", "1 Sam"],
+  "2 Samuel": ["2Sa", "2Sam", "2 Sam"],
+  "1 Kings": ["1Ki", "1Kin", "1 Ki"],
+  "2 Kings": ["2Ki", "2Kin", "2 Ki"],
+  "1 Chronicles": ["1Ch", "1Chr", "1 Chr"],
+  "2 Chronicles": ["2Ch", "2Chr", "2 Chr"],
+  "Ezra": ["Ezr"],
+  "Nehemiah": ["Ne", "Neh"],
+  "Esther": ["Es", "Est", "Esth"],
+  "Job": ["Job"],
+  "Psalms": ["Ps", "Psa", "Psalm"],
+  "Proverbs": ["Pr", "Pro", "Prov"],
+  "Ecclesiastes": ["Ec", "Ecc", "Eccl"],
+  "Song of Solomon": ["So", "Song", "Ca", "SS"],
+  "Isaiah": ["Is", "Isa"],
+  "Jeremiah": ["Je", "Jer"],
+  "Lamentations": ["La", "Lam"],
+  "Ezekiel": ["Eze", "Ezek"],
+  "Daniel": ["Da", "Dan"],
+  "Hosea": ["Ho", "Hos"],
+  "Joel": ["Joe", "Joel"],
+  "Amos": ["Am", "Amo"],
+  "Obadiah": ["Ob", "Oba"],
+  "Jonah": ["Jon"],
+  "Micah": ["Mi", "Mic"],
+  "Nahum": ["Na", "Nah"],
+  "Habakkuk": ["Hab"],
+  "Zephaniah": ["Ze", "Zep", "Zeph"],
+  "Haggai": ["Hag"],
+  "Zechariah": ["Zec", "Zech"],
+  "Malachi": ["Mal"],
+  "Matthew": ["Mt", "Mat", "Matt"],
+  "Mark": ["Mr", "Mar", "Mrk"],
+  "Luke": ["Lu", "Luk"],
+  "John": ["Joh", "Jn"],
+  "Acts": ["Ac", "Act"],
+  "Romans": ["Ro", "Rom"],
+  "1 Corinthians": ["1Co", "1Cor", "1 Cor"],
+  "2 Corinthians": ["2Co", "2Cor", "2 Cor"],
+  "Galatians": ["Ga", "Gal"],
+  "Ephesians": ["Ep", "Eph"],
+  "Philippians": ["Php", "Phil"],
+  "Colossians": ["Col"],
+  "1 Thessalonians": ["1Th", "1Thes", "1Thess", "1 Thes"],
+  "2 Thessalonians": ["2Th", "2Thes", "2Thess", "2 Thes"],
+  "1 Timothy": ["1Ti", "1Tim", "1 Tim"],
+  "2 Timothy": ["2Ti", "2Tim", "2 Tim"],
+  "Titus": ["Tit"],
+  "Philemon": ["Phm", "Phile"],
+  "Hebrews": ["Heb"],
+  "James": ["Jas"],
+  "1 Peter": ["1Pe", "1Pet", "1 Pet"],
+  "2 Peter": ["2Pe", "2Pet", "2 Pet"],
+  "1 John": ["1Jo", "1Jn", "1 Jn"],
+  "2 John": ["2Jo", "2Jn", "2 Jn"],
+  "3 John": ["3Jo", "3Jn", "3 Jn"],
+  "Jude": ["Jude"],
+  "Revelation": ["Re", "Rev"]
+};
+var ALL_TOKENS = [];
+for (const [name, abbrevs] of Object.entries(BIBLE_BOOKS)) {
+  ALL_TOKENS.push(name.toLowerCase());
+  for (const a of abbrevs)
+    ALL_TOKENS.push(a.toLowerCase());
+}
+function isBibleVerse(ref) {
+  const normalized = ref.trim().toLowerCase();
+  for (const token of ALL_TOKENS) {
+    if (!normalized.startsWith(token))
+      continue;
+    const next = normalized[token.length];
+    if (next === void 0 || next === " " || next >= "0" && next <= "9") {
+      return true;
+    }
+  }
+  return false;
+}
+
 // verseService.ts
-var cache = /* @__PURE__ */ new Map();
+var WORKER_BASE = "https://verse-api-worker.mark-11f.workers.dev";
+var verseCache = /* @__PURE__ */ new Map();
+var wolCache = /* @__PURE__ */ new Map();
 function clearVerseCache() {
-  cache.clear();
+  verseCache.clear();
+  wolCache.clear();
 }
 async function fetchVerse(verseRef) {
   const key = verseRef.trim().toLowerCase();
-  if (cache.has(key))
-    return cache.get(key);
+  if (verseCache.has(key))
+    return verseCache.get(key);
   try {
-    const response = await fetch(
-      `https://verse-api-worker.mark-11f.workers.dev/${encodeURIComponent(verseRef)}`
-    );
+    const response = await fetch(`${WORKER_BASE}/${encodeURIComponent(verseRef)}`);
     if (!response.ok)
       return null;
-    const data = await response.json();
-    cache.set(key, data);
+    const raw = await response.json();
+    const data = { type: "verse", ...raw };
+    verseCache.set(key, data);
     return data;
-  } catch (error) {
-    console.error(`Error fetching verse "${verseRef}":`, error);
+  } catch (e) {
+    console.error(`Error fetching verse "${verseRef}":`, e);
     return null;
   }
+}
+async function fetchWol(ref) {
+  var _a;
+  const key = ref.trim().toLowerCase();
+  if (wolCache.has(key))
+    return wolCache.get(key);
+  try {
+    const response = await fetch(`${WORKER_BASE}/wol/${encodeURIComponent(ref)}`);
+    if (!response.ok)
+      return null;
+    const raw = await response.json();
+    const data = { type: "wol", results: (_a = raw.results) != null ? _a : [] };
+    wolCache.set(key, data);
+    return data;
+  } catch (e) {
+    console.error(`Error fetching WOL "${ref}":`, e);
+    return null;
+  }
+}
+async function fetchReference(ref) {
+  return isBibleVerse(ref) ? fetchVerse(ref) : fetchWol(ref);
 }
 
 // VerseModal.ts
@@ -99,7 +210,7 @@ var VerseModal = class extends import_obsidian.Modal {
   constructor(app, verseRef) {
     super(app);
     this.verseRef = verseRef;
-    this.verseData = null;
+    this.data = null;
     this.loading = true;
   }
   onOpen() {
@@ -117,25 +228,42 @@ var VerseModal = class extends import_obsidian.Modal {
     const { contentEl } = this;
     contentEl.empty();
     if (this.loading) {
-      contentEl.createEl("p", { text: "Loading verse\u2026" });
-    } else if (this.verseData) {
+      contentEl.createEl("p", { text: "Loading\u2026" });
+      return;
+    }
+    if (!this.data) {
+      contentEl.createEl("p", { text: "Error loading reference." });
+      return;
+    }
+    if (this.data.type === "verse") {
       const p = contentEl.createEl("p");
-      renderVerseText(p, this.verseData.text, this.verseRef);
+      renderVerseText(p, this.data.text, this.verseRef);
       const buttonContainer = contentEl.createDiv({ cls: "verse-modal-button-container" });
       new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
-        if (this.verseData) {
-          window.open(
-            `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.verseData.reference)}`,
-            "_blank"
-          );
-        }
+        window.open(
+          `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.data.reference)}`,
+          "_blank"
+        );
       });
     } else {
-      contentEl.createEl("p", { text: "Error loading verse." });
+      if (this.data.results.length === 0) {
+        contentEl.createEl("p", { text: "No results found." });
+      } else {
+        for (const html of this.data.results) {
+          contentEl.createDiv({ cls: "verse-modal-wol-result" }).innerHTML = html;
+        }
+      }
+      const buttonContainer = contentEl.createDiv({ cls: "verse-modal-button-container" });
+      new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
+        window.open(
+          `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.verseRef)}`,
+          "_blank"
+        );
+      });
     }
   }
   async fetchAndDisplay() {
-    this.verseData = await fetchVerse(this.verseRef);
+    this.data = await fetchReference(this.verseRef);
     this.loading = false;
     this.displayMessage();
   }
@@ -271,7 +399,7 @@ var VerseParser = class {
       }
       const verseRef = match[1];
       const verseElement = document.createElement("span");
-      verseElement.className = "verse-reference";
+      verseElement.className = isBibleVerse(verseRef) ? "verse-reference" : "verse-reference wol-reference";
       verseElement.setAttribute("data-verse-ref", verseRef);
       verseElement.textContent = verseRef;
       fragment.appendChild(verseElement);
@@ -347,19 +475,21 @@ var VerseSidebarView = class extends import_obsidian2.ItemView {
     }
     this.renderPlaceholders(refs);
     for (const ref of refs) {
-      fetchVerse(ref).then((data) => this.fillPlaceholder(ref, data));
+      fetchReference(ref).then((data) => this.fillPlaceholder(ref, data));
     }
   }
   extractRefs(content) {
     const seen = /* @__PURE__ */ new Set();
     const refs = [];
-    let match;
     const regex = new RegExp(VERSE_REGEX.source, "g");
+    let match;
     while ((match = regex.exec(content)) !== null) {
-      const ref = match[1].trim();
-      if (!seen.has(ref)) {
-        seen.add(ref);
-        refs.push(ref);
+      for (const part of match[1].split(";")) {
+        const ref = part.trim();
+        if (ref && !seen.has(ref)) {
+          seen.add(ref);
+          refs.push(ref);
+        }
       }
     }
     return refs;
@@ -398,11 +528,18 @@ var VerseSidebarView = class extends import_obsidian2.ItemView {
     if (!body)
       return;
     body.empty();
-    if (data) {
-      const p = body.createEl("p");
-      renderVerseText(p, data.text, ref);
+    if (!data) {
+      body.createEl("p", { text: "Could not load reference.", cls: "verse-sidebar-error" });
+    } else if (data.type === "verse") {
+      renderVerseText(body.createEl("p"), data.text, ref);
     } else {
-      body.createEl("p", { text: "Could not load verse.", cls: "verse-sidebar-error" });
+      if (data.results.length === 0) {
+        body.createEl("p", { text: "No results found.", cls: "verse-sidebar-error" });
+      } else {
+        for (const html of data.results) {
+          body.createDiv({ cls: "verse-sidebar-wol-result" }).innerHTML = html;
+        }
+      }
     }
   }
 };
@@ -414,6 +551,7 @@ var import_obsidian3 = require("obsidian");
 var VERSE_RE = /!!(.+?)!!/g;
 var hideMark = import_view.Decoration.replace({});
 var verseMark = import_view.Decoration.mark({ class: "cm-verse-reference" });
+var wolMark = import_view.Decoration.mark({ class: "cm-verse-reference cm-verse-reference-wol" });
 function buildDecorations(view) {
   if (!view.state.field(import_obsidian3.editorLivePreviewField, false)) {
     return import_view.Decoration.none;
@@ -431,8 +569,9 @@ function buildDecorations(view) {
       const innerEnd = matchEnd - 2;
       if (cursor.from <= matchEnd && cursor.to >= matchStart)
         continue;
+      const mark = isBibleVerse(match[1]) ? verseMark : wolMark;
       builder.add(matchStart, innerStart, hideMark);
-      builder.add(innerStart, innerEnd, verseMark);
+      builder.add(innerStart, innerEnd, mark);
       builder.add(innerEnd, matchEnd, hideMark);
     }
   }

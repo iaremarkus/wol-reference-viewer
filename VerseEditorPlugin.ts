@@ -4,10 +4,12 @@ import { editorLivePreviewField } from 'obsidian';
 import { VerseModal } from './VerseModal';
 import { VersePopover } from './VersePopover';
 import type VersePlugin from './main';
+import { isBibleVerse } from './bibleBooks';
 
 const VERSE_RE = /!!(.+?)!!/g;
-const hideMark  = Decoration.replace({});
-const verseMark = Decoration.mark({ class: 'cm-verse-reference' });
+const hideMark    = Decoration.replace({});
+const verseMark   = Decoration.mark({ class: 'cm-verse-reference' });
+const wolMark     = Decoration.mark({ class: 'cm-verse-reference cm-verse-reference-wol' });
 
 function buildDecorations(view: EditorView): DecorationSet {
     if (!view.state.field(editorLivePreviewField, false)) {
@@ -31,9 +33,10 @@ function buildDecorations(view: EditorView): DecorationSet {
             // Reveal raw text when cursor is anywhere inside the marker
             if (cursor.from <= matchEnd && cursor.to >= matchStart) continue;
 
-            builder.add(matchStart, innerStart, hideMark);   // hide !!
-            builder.add(innerStart, innerEnd,   verseMark);  // style ref
-            builder.add(innerEnd,   matchEnd,   hideMark);   // hide !!
+            const mark = isBibleVerse(match[1]) ? verseMark : wolMark;
+            builder.add(matchStart, innerStart, hideMark);  // hide !!
+            builder.add(innerStart, innerEnd,   mark);      // style ref
+            builder.add(innerEnd,   matchEnd,   hideMark);  // hide !!
         }
     }
 
