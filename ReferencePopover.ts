@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ReferenceData } from './types';
+import { ReferenceData, appendHTML } from './types';
 import { fetchReference } from './referenceService';
 
 export class ReferencePopover {
@@ -27,15 +27,6 @@ export class ReferencePopover {
         this.popoverEl.addClass('ref-popover');
         this.popoverEl.style.position = 'absolute';
         this.popoverEl.style.zIndex = '9999';
-        this.popoverEl.style.maxWidth = '300px';
-        this.popoverEl.style.padding = '10px';
-        this.popoverEl.style.borderRadius = 'var(--radius-m)';
-        this.popoverEl.style.backgroundColor = 'var(--background-secondary)';
-        this.popoverEl.style.border = '1px solid var(--background-modifier-border)';
-        this.popoverEl.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
-        this.popoverEl.style.color = 'var(--text-normal)';
-        this.popoverEl.style.fontSize = 'var(--font-ui-small)';
-        this.popoverEl.style.lineHeight = '1.5';
 
         this.popoverEl.createEl('p', { text: 'Loading\u2026', cls: 'ref-popover-loading' });
 
@@ -61,7 +52,7 @@ export class ReferencePopover {
         }
 
         for (const html of data.results) {
-            this.popoverEl.createDiv({ cls: 'ref-popover-result' }).innerHTML = html;
+            appendHTML(this.popoverEl.createDiv({ cls: 'ref-popover-result' }), html);
         }
     }
 

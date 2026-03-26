@@ -1,5 +1,5 @@
 import { ItemView, TFile, WorkspaceLeaf, setIcon } from 'obsidian';
-import { ReferenceData } from './types';
+import { ReferenceData, appendHTML } from './types';
 import { fetchReference, isCached } from './referenceService';
 
 export const VIEW_TYPE_REFERENCE_SIDEBAR = 'reference-sidebar-view';
@@ -135,7 +135,7 @@ export class ReferenceSidebarView extends ItemView {
             body.createEl('p', { text: 'No results found.', cls: 'ref-sidebar-error' });
         } else {
             for (const html of data.results) {
-                body.createDiv({ cls: 'ref-sidebar-wol-result' }).innerHTML = html;
+                appendHTML(body.createDiv({ cls: 'ref-sidebar-wol-result' }), html);
             }
         }
     }

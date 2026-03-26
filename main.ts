@@ -144,10 +144,9 @@ class WolSettingTab extends PluginSettingTab {
 		const {containerEl} = this;
 
 		containerEl.empty();
-		containerEl.createEl('h2', {text: 'WOL Reference Tools Settings'});
 
 		new Setting(containerEl)
-			.setName('Reference Display Option')
+			.setName('Reference display option')
 			.setDesc('Choose how references are displayed when clicked.')
 			.addDropdown(dropdown => dropdown
 				.addOption('modal', 'Modal Dialog')

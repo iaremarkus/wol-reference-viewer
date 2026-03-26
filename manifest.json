@@ -3,8 +3,8 @@
   "name": "WOL Reference Tools",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "Look up Bible verses and WOL research articles inline in your notes using !!reference!! syntax.",
-  "author": "@iaremarkus",
-  "authorUrl": "https://github.com/iaremarkusdev",
+  "description": "Look up Bible verses and references from [wol.jw.org](https://wol.jw.org), and add them to your notes inline, in a modal or popover, or in the sidebar.",
+  "author": "iaremarkus",
+  "authorUrl": "https://github.com/iaremarkus",
   "isDesktopOnly": false
 }

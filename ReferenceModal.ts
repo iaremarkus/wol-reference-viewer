@@ -1,5 +1,5 @@
 import { App, ButtonComponent, Modal } from 'obsidian';
-import { ReferenceData } from './types';
+import { ReferenceData, appendHTML } from './types';
 import { fetchReference } from './referenceService';
 
 export class ReferenceModal extends Modal {
@@ -47,7 +47,7 @@ export class ReferenceModal extends Modal {
             contentEl.createEl('p', { text: 'No results found.' });
         } else {
             for (const html of this.data.results) {
-                contentEl.createDiv({ cls: 'ref-modal-result' }).innerHTML = html;
+                appendHTML(contentEl.createDiv({ cls: 'ref-modal-result' }), html);
             }
         }
 

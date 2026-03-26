@@ -4,6 +4,7 @@ import { editorLivePreviewField } from 'obsidian';
 import { ReferenceModal } from './ReferenceModal';
 import { ReferencePopover } from './ReferencePopover';
 import type WolPlugin from './main';
+import { appendHTML } from './types';
 import { isBibleVerse } from './bibleBooks';
 import { fetchReference } from './referenceService';
 
@@ -41,7 +42,7 @@ class ReferenceInlineWidget extends WidgetType {
             for (const html of data.results) {
                 const item = document.createElement('div');
                 item.className = 'cm-ref-inline-item';
-                item.innerHTML = html;
+                appendHTML(item, html);
                 body.appendChild(item);
             }
         });

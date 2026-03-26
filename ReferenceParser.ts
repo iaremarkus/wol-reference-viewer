@@ -1,4 +1,5 @@
 import WolPlugin, { ReferenceDisplayOption } from './main';
+import { appendHTML } from './types';
 import { ReferenceModal } from './ReferenceModal';
 import { ReferencePopover } from './ReferencePopover';
 import { isBibleVerse } from './bibleBooks';
@@ -82,7 +83,7 @@ export class ReferenceParser {
                     }
                     for (const html of data.results) {
                         const item = contentEl.createDiv({ cls: 'ref-callout-result' });
-                        item.innerHTML = html;
+                        appendHTML(item, html);
                     }
                 });
             } else {
