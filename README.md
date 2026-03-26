@@ -43,7 +43,8 @@ scriptures.forEach(s => dv.paragraph(s + "> <br />"));
 
 ---
 
-https://iaremarkus.s3.af-south-1.amazonaws.com/wol-reference-viewer-demo.mp4
+
+[![Demo]]([https://your-bucket.s3.amazonaws.com/video.mp4](https://iaremarkus.s3.af-south-1.amazonaws.com/wol-reference-viewer-demo.mp4))
 
 ---
 
