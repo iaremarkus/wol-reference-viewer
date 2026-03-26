@@ -22,9 +22,10 @@ __export(main_exports, {
   default: () => WolPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // referenceService.ts
+var import_obsidian = require("obsidian");
 var WORKER_BASE = "https://wol-worker.iaremark.us";
 var CACHE_TTL_MS = 30 * 60 * 1e3;
 var referenceCache = /* @__PURE__ */ new Map();
@@ -48,13 +49,15 @@ async function fetchReference(ref, signal) {
   const cached = referenceCache.get(key);
   if (cached && isFresh(cached))
     return cached.data;
+  if (signal == null ? void 0 : signal.aborted)
+    return null;
   try {
-    const response = await fetch(`${WORKER_BASE}/${encodeURIComponent(ref)}`, {
-      signal
-    });
-    if (!response.ok)
+    const response = await (0, import_obsidian.requestUrl)(`${WORKER_BASE}/${encodeURIComponent(ref)}`);
+    if (signal == null ? void 0 : signal.aborted)
       return null;
-    const raw = await response.json();
+    if (response.status !== 200)
+      return null;
+    const raw = response.json;
     const data = {
       type: "reference",
       ref,
@@ -63,7 +66,7 @@ async function fetchReference(ref, signal) {
     referenceCache.set(key, { data, ts: Date.now() });
     return data;
   } catch (e) {
-    if (e instanceof Error && e.name === "AbortError")
+    if (signal == null ? void 0 : signal.aborted)
       return null;
     console.error(`Error fetching reference "${ref}":`, e);
     return null;
@@ -77,8 +80,8 @@ function appendHTML(el, html) {
 }
 
 // ReferenceModal.ts
-var import_obsidian = require("obsidian");
-var ReferenceModal = class extends import_obsidian.Modal {
+var import_obsidian2 = require("obsidian");
+var ReferenceModal = class extends import_obsidian2.Modal {
   constructor(app, verseRef) {
     super(app);
     this.verseRef = verseRef;
@@ -91,7 +94,7 @@ var ReferenceModal = class extends import_obsidian.Modal {
     contentEl.addClass("ref-modal");
     this.titleEl.setText(this.verseRef);
     this.displayMessage();
-    this.fetchAndDisplay();
+    void this.fetchAndDisplay();
   }
   onClose() {
     this.contentEl.empty();
@@ -115,7 +118,7 @@ var ReferenceModal = class extends import_obsidian.Modal {
       }
     }
     const buttonContainer = contentEl.createDiv({ cls: "ref-modal-button-container" });
-    new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
+    new import_obsidian2.ButtonComponent(buttonContainer).setButtonText("View on wol.jw.org").setCta().onClick(() => {
       window.open(
         `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.verseRef)}`,
         "_blank"
@@ -152,8 +155,6 @@ var _ReferencePopover = class {
     const generation = ++this.showGeneration;
     this.popoverEl = document.createElement("div");
     this.popoverEl.addClass("ref-popover");
-    this.popoverEl.style.position = "absolute";
-    this.popoverEl.style.zIndex = "9999";
     this.popoverEl.createEl("p", { text: "Loading\u2026", cls: "ref-popover-loading" });
     document.body.appendChild(this.popoverEl);
     this.positionPopover(targetEl);
@@ -315,7 +316,7 @@ var ReferenceParser = class {
     );
     const textNodes = [];
     let node;
-    while (node = walker.nextNode()) {
+    while ((node = walker.nextNode()) !== null) {
       textNodes.push(node);
     }
     for (const textNode of textNodes) {
@@ -347,7 +348,7 @@ var ReferenceParser = class {
         contentEl.createEl("p", { cls: "ref-callout-loading", text: "Loading\u2026" });
         fragment.appendChild(callout);
         calloutEl = callout;
-        fetchReference(ref).then((data) => {
+        void fetchReference(ref).then((data) => {
           contentEl.empty();
           if (!data || data.results.length === 0) {
             contentEl.createEl("p", { text: "No results found." });
@@ -385,14 +386,14 @@ var ReferenceParser = class {
       }
     }
   }
-  async setupReferenceClickHandler(container) {
+  setupReferenceClickHandler(container) {
     const refElements = container.querySelectorAll(".wol-ref-link");
     for (let i = 0; i < refElements.length; i++) {
       const element = refElements[i];
       const ref = element.getAttribute("data-ref");
       if (ref) {
-        element.addEventListener("click", async () => {
-          await this.displayReference(ref, element);
+        element.addEventListener("click", () => {
+          void this.displayReference(ref, element);
         });
       }
     }
@@ -404,21 +405,17 @@ var ReferenceParser = class {
         new ReferenceModal(this.plugin.app, ref).open();
         break;
       case "popover":
-        ReferencePopover.getInstance(this.plugin.app).show(clickedElement, ref);
-        break;
-      default:
-        console.warn(`Unknown display option: ${displayOption}. Defaulting to modal.`);
-        new ReferenceModal(this.plugin.app, ref).open();
+        await ReferencePopover.getInstance(this.plugin.app).show(clickedElement, ref);
         break;
     }
   }
 };
 
 // ReferenceSidebarView.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var VIEW_TYPE_REFERENCE_SIDEBAR = "reference-sidebar-view";
 var REF_REGEX = /!!(.+?)!!/g;
-var ReferenceSidebarView = class extends import_obsidian2.ItemView {
+var ReferenceSidebarView = class extends import_obsidian3.ItemView {
   constructor(leaf) {
     super(leaf);
     this.updateGeneration = 0;
@@ -511,7 +508,7 @@ var ReferenceSidebarView = class extends import_obsidian2.ItemView {
       });
       wolLink.setAttr("target", "_blank");
       wolLink.setAttr("aria-label", "View on WOL");
-      (0, import_obsidian2.setIcon)(wolLink, "external-link");
+      (0, import_obsidian3.setIcon)(wolLink, "external-link");
       const body = item.createDiv({ cls: "ref-sidebar-body" });
       body.createEl("p", { text: "Loading\u2026", cls: "ref-sidebar-loading" });
     }
@@ -541,7 +538,7 @@ var ReferenceSidebarView = class extends import_obsidian2.ItemView {
 // ReferenceEditorPlugin.ts
 var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var REF_RE = /!!(.+?)!!(>?)/g;
 var hideMark = import_view.Decoration.replace({});
 var refMark = import_view.Decoration.mark({ class: "cm-wol-ref" });
@@ -565,7 +562,7 @@ var ReferenceInlineWidget = class extends import_view.WidgetType {
     body.className = "cm-ref-inline-body";
     body.textContent = "Loading\u2026";
     wrap.appendChild(body);
-    fetchReference(this.ref).then((data) => {
+    void fetchReference(this.ref).then((data) => {
       body.empty();
       if (!data || data.results.length === 0) {
         body.textContent = "No results found.";
@@ -585,7 +582,7 @@ var ReferenceInlineWidget = class extends import_view.WidgetType {
   }
 };
 function buildDecorations(view) {
-  if (!view.state.field(import_obsidian3.editorLivePreviewField, false)) {
+  if (!view.state.field(import_obsidian4.editorLivePreviewField, false)) {
     return import_view.Decoration.none;
   }
   const builder = new import_state.RangeSetBuilder();
@@ -632,7 +629,7 @@ function createReferenceEditorPlugin(plugin) {
       decorations: (v) => v.decorations,
       eventHandlers: {
         mousedown: (e, view) => {
-          if (!view.state.field(import_obsidian3.editorLivePreviewField, false))
+          if (!view.state.field(import_obsidian4.editorLivePreviewField, false))
             return;
           const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
           if (pos === null)
@@ -648,7 +645,7 @@ function createReferenceEditorPlugin(plugin) {
               const isCallout = match[2] === ">";
               if (!isCallout) {
                 if (plugin.settings.referenceDisplayOption === "popover") {
-                  ReferencePopover.getInstance(plugin.app).show(e.target, match[1]);
+                  void ReferencePopover.getInstance(plugin.app).show(e.target, match[1]);
                 } else {
                   new ReferenceModal(plugin.app, match[1]).open();
                 }
@@ -662,24 +659,16 @@ function createReferenceEditorPlugin(plugin) {
   );
 }
 
-// styles.css
-var styles_default = '/* ============================================================\n   Inline reference links (reading mode)\n   ============================================================ */\n\n.wol-ref-link {\n  color: var(--color-accent);\n  cursor: pointer;\n  display: inline-block;\n}\n\n.wol-ref-link::before {\n  content: " \u{1F4D6} ";\n}\n\n.wol-ref-link:hover {\n  opacity: 0.8;\n}\n\n/* Legacy verlink class */\n.verlink {\n  color: var(--text-accent);\n  text-decoration: none;\n  font-weight: bold;\n}\n\n.verlink:hover {\n  text-decoration: underline;\n}\n\n/* ============================================================\n   Live Preview editor decoration\n   ============================================================ */\n\n.cm-wol-ref {\n  color: var(--color-accent);\n  opacity: 0.8;\n  font-weight: 500;\n  cursor: pointer;\n}\n\n.cm-wol-ref::before {\n  content: " ";\n}\n\n.cm-wol-ref:hover {\n  opacity: 1;\n}\n\n/* ============================================================\n   Modal\n   ============================================================ */\n\n.modal-header {\n  margin: 0 0 5px;\n}\n\n.modal-header .modal-title {\n  font-weight: 600;\n  font-size: 120%;\n}\n\n.ref-modal .modal-content {\n  padding: 20px;\n  font-family: var(--font-family);\n}\n\n.ref-modal p {\n  margin-bottom: 0px;\n  line-height: 1.6;\n}\n\n.ref-modal p:last-child {\n  margin-bottom: 0;\n}\n\n.ref-modal-reference {\n  font-size: 0.9em;\n  color: var(--text-muted);\n  font-style: italic;\n  margin-top: 15px;\n  text-align: right;\n}\n\n.ref-modal-result {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 0 !important;\n}\n\n.ref-modal-result p {\n  margin: 0 !important;\n}\n\n.ref-modal-result > li {\n  list-style: none;\n}\n\n.ref-modal-result ol > li::marker,\n.ref-modal-result ul > li::marker {\n  display: none !important;\n}\n\n.ref-modal-button-container {\n  margin-top: 5px;\n}\n\n.ref-modal-button-container button {\n  font-size: 80%;\n  font-weight: 600 !important;\n}\n\n.mod-cta {\n  padding: 8px 10px 10px !important;\n  line-height: 1 !important;\n  height: auto !important;\n}\n\n/* ============================================================\n   Popover\n   ============================================================ */\n\n.ref-popover {\n  max-width: 300px;\n  padding: 10px;\n  border-radius: var(--radius-m);\n  background-color: var(--background-secondary);\n  border: 1px solid var(--background-modifier-border);\n  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);\n  color: var(--text-normal);\n  font-size: var(--font-ui-small);\n  line-height: 1.5;\n}\n\n.ref-popover p {\n  line-height: 1.6;\n}\n\n/* ============================================================\n   Shared WOL link style (modal / popover / sidebar)\n   ============================================================ */\n\n.ref-modal-wol-link,\n.ref-popover-wol-link,\n.ref-sidebar-wol-link {\n  color: var(--color-accent);\n  text-decoration: none;\n  font-size: 80%;\n  font-weight: 500;\n  display: inline-block;\n}\n\n.ref-modal-wol-link:hover,\n.ref-popover-wol-link:hover,\n.ref-sidebar-wol-link:hover {\n  text-decoration: underline;\n}\n\n/* ============================================================\n   Sidebar\n   ============================================================ */\n\n.ref-sidebar {\n  padding: 12px;\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n\n.ref-sidebar-empty {\n  color: var(--text-muted);\n  font-style: italic;\n  font-size: var(--font-ui-small);\n  text-align: center;\n  margin-top: 24px;\n}\n\n.ref-sidebar-item {\n  padding: 12px 0;\n}\n\n.ref-sidebar .ref-sidebar-item:not(:last-of-type) {\n  border-bottom: 1px dotted rgba(255, 255, 255, 0.2);\n  padding-bottom: 20px;\n}\n\n.ref-sidebar-header {\n  display: flex;\n  flex-direction: row;\n  width: 100%;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 6px;\n}\n\n.ref-sidebar-ref {\n  font-size: 90%;\n  font-weight: 500;\n  color: var(--color-accent);\n  opacity: 0.5;\n}\n\n.ref-sidebar-wol-icon {\n  display: flex;\n  align-items: center;\n  color: var(--text-muted);\n  line-height: 1;\n}\n\n.ref-sidebar-wol-icon:hover {\n  color: var(--text-accent);\n}\n\n.ref-sidebar-wol-icon svg {\n  width: 13px;\n  height: 13px;\n}\n\n.ref-sidebar-body p {\n  font-size: var(--font-ui-small);\n  line-height: 1.6;\n  color: var(--text-normal);\n  margin: 0 0 6px 0;\n}\n\n.ref-sidebar-error {\n  color: var(--text-error);\n  font-size: var(--font-ui-smaller);\n}\n\n/* WOL result cards inside sidebar */\n.ref-sidebar-wol-result {\n  font-size: var(--font-ui-small);\n  line-height: 1.6;\n  color: var(--text-normal);\n  padding: 6px 0;\n  border-top: 1px solid var(--background-modifier-border);\n}\n\n.ref-sidebar-wol-result:first-child {\n  border-top: none;\n  padding-top: 0;\n}\n\n.ref-sidebar-wol-result img {\n  max-width: 100%;\n  height: auto;\n}\n\n.ref-sidebar-wol-result a {\n  color: var(--text-accent);\n  text-decoration: none;\n}\n\n.ref-sidebar-wol-result a:hover {\n  text-decoration: underline;\n}\n\n/* ============================================================\n   Inline callout (reading mode) & inline widget (editor)\n   ============================================================ */\n\n.cm-ref-inline-result,\n.ref-callout {\n  background-color: transparent;\n  box-shadow: none;\n}\n\n.cm-ref-inline-body,\n.ref-callout .callout-content {\n  background: rgba(0, 0, 0, 0.1);\n  border: 1px solid var(--background-modifier-border);\n  padding: 15px;\n  border-radius: 10px;\n  font-size: 90%;\n  box-shadow: none;\n}\n\n.cm-ref-inline-body p,\n.ref-callout .callout-content p {\n  margin: 0 !important;\n}\n\n.cm-ref-inline-label,\n.ref-callout .callout-title {\n  font-size: 90%;\n  font-weight: 500;\n  color: var(--text-normal) !important;\n  margin-left: 3%;\n  width: 94%;\n  background-color: rgba(0, 0, 0, 0.2);\n  padding: 5px 10px;\n  border-radius: 10px 10px 0 0;\n  box-shadow: none;\n  line-height: inherit;\n}\n\n.ref-callout .callout-title-inner {\n  font-weight: inherit;\n}\n\n.cm-ref-inline-item,\n.ref-callout-result {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  margin-bottom: 6px;\n}\n\n.cm-ref-inline-item:last-child,\n.ref-callout-result:last-child {\n  margin-bottom: 0;\n}\n\n.cm-ref-inline-item a,\n.ref-callout-result a {\n  color: var(--text-accent);\n  text-decoration: none;\n}\n\n.cm-ref-inline-item a:hover,\n.ref-callout-result a:hover {\n  text-decoration: underline;\n}\n\n/* Loading state (sidebar & callout) */\n.ref-sidebar-loading,\n.ref-callout-loading {\n  color: var(--text-muted);\n  font-style: italic;\n}\n\n/* ============================================================\n   WOL content formatting (verse numbers, result lists)\n   ============================================================ */\n\n.ref-number,\n.verse-number,\nspan.v .vl {\n  font-size: 70%;\n  font-weight: 600;\n  opacity: 0.5;\n  padding: 1px 2px;\n  position: relative;\n  top: -1px;\n  margin: 0 3px;\n  line-height: 1;\n  background: rgba(0, 0, 0, 0.3);\n  border-radius: 3px;\n  text-decoration: none;\n}\n\nspan.v .b {\n  display: none;\n}\n\n.resultItems {\n  margin: 0 !important;\n  padding: 0 !important;\n}\n\n.resultItems ::marker {\n  display: none !important;\n  opacity: 0 !important;\n  color: transparent;\n}\n';
-
 // main.ts
 var DEFAULT_SETTINGS = {
   referenceDisplayOption: "modal"
 };
-var WolPlugin = class extends import_obsidian4.Plugin {
+var WolPlugin = class extends import_obsidian5.Plugin {
   async onload() {
-    console.log("Loading WOL Reference Tools");
-    this.styleEl = document.createElement("style");
-    this.styleEl.id = "wol-reference-tools-styles";
-    this.styleEl.textContent = styles_default;
-    document.head.appendChild(this.styleEl);
     await this.loadSettings();
     this.referenceParser = new ReferenceParser(this);
     this.registerView(VIEW_TYPE_REFERENCE_SIDEBAR, (leaf) => new ReferenceSidebarView(leaf));
-    this.registerMarkdownPostProcessor(async (el, _ctx) => {
+    this.registerMarkdownPostProcessor((el, _ctx) => {
       this.referenceParser.setupReferenceLinks(el);
     });
     this.registerEditorExtension(createReferenceEditorPlugin(this));
@@ -689,7 +678,7 @@ var WolPlugin = class extends import_obsidian4.Plugin {
       })
     );
     this.registerEvent(
-      this.app.workspace.on("editor-change", (0, import_obsidian4.debounce)(() => {
+      this.app.workspace.on("editor-change", (0, import_obsidian5.debounce)(() => {
         this.updateSidebar(this.app.workspace.getActiveFile());
       }, 500))
     );
@@ -713,14 +702,11 @@ var WolPlugin = class extends import_obsidian4.Plugin {
       name: "Clear reference cache",
       callback: () => {
         clearReferenceCache();
-        new import_obsidian4.Notice("Reference cache cleared.");
+        new import_obsidian5.Notice("Reference cache cleared.");
       }
     });
   }
   onunload() {
-    var _a;
-    console.log("Unloading WOL Reference Tools");
-    (_a = this.styleEl) == null ? void 0 : _a.remove();
   }
   async activateSidebar() {
     const { workspace } = this.app;
@@ -732,15 +718,15 @@ var WolPlugin = class extends import_obsidian4.Plugin {
     }
   }
   updateSidebar(file) {
+    var _a;
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR);
     if (leaves.length === 0)
       return;
-    const rightSplit = this.app.workspace.rightSplit;
-    if (rightSplit == null ? void 0 : rightSplit.collapsed)
+    if ((_a = this.app.workspace.rightSplit) == null ? void 0 : _a.collapsed)
       return;
     const view = leaves[0].view;
     if (view instanceof ReferenceSidebarView) {
-      view.update(file);
+      void view.update(file);
     }
   }
   async loadSettings() {
@@ -750,7 +736,7 @@ var WolPlugin = class extends import_obsidian4.Plugin {
     await this.saveData(this.settings);
   }
 };
-var WolSettingTab = class extends import_obsidian4.PluginSettingTab {
+var WolSettingTab = class extends import_obsidian5.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -758,13 +744,13 @@ var WolSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("Reference display option").setDesc("Choose how references are displayed when clicked.").addDropdown((dropdown) => dropdown.addOption("modal", "Modal Dialog").addOption("popover", "Pop-over").setValue(this.plugin.settings.referenceDisplayOption).onChange(async (value) => {
+    new import_obsidian5.Setting(containerEl).setName("Reference display option").setDesc("Choose how references are displayed when clicked.").addDropdown((dropdown) => dropdown.addOption("modal", "Modal dialog").addOption("popover", "Pop-over").setValue(this.plugin.settings.referenceDisplayOption).onChange(async (value) => {
       this.plugin.settings.referenceDisplayOption = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian4.Setting(containerEl).setName("Reference cache").setDesc("Fetched references are cached in memory for the current session. Clear the cache to force fresh fetches.").addButton((button) => button.setButtonText("Clear cache").onClick(() => {
+    new import_obsidian5.Setting(containerEl).setName("Reference cache").setDesc("Fetched references are cached in memory for the current session. Clear the cache to force fresh fetches.").addButton((button) => button.setButtonText("Clear cache").onClick(() => {
       clearReferenceCache();
-      new import_obsidian4.Notice("Reference cache cleared.");
+      new import_obsidian5.Notice("Reference cache cleared.");
     }));
   }
 };

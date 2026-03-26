@@ -1,3 +1,4 @@
+import { requestUrl } from "obsidian";
 import { ReferenceData } from "./types";
 
 const WORKER_BASE = "https://wol-worker.iaremark.us";
@@ -40,12 +41,13 @@ export async function fetchReference(
   const cached = referenceCache.get(key);
   if (cached && isFresh(cached)) return cached.data;
 
+  if (signal?.aborted) return null;
+
   try {
-    const response = await fetch(`${WORKER_BASE}/${encodeURIComponent(ref)}`, {
-      signal,
-    });
-    if (!response.ok) return null;
-    const raw = (await response.json()) as { results: string[] };
+    const response = await requestUrl(`${WORKER_BASE}/${encodeURIComponent(ref)}`);
+    if (signal?.aborted) return null;
+    if (response.status !== 200) return null;
+    const raw = response.json as { results: string[] };
     const data: ReferenceData = {
       type: "reference",
       ref,
@@ -54,7 +56,7 @@ export async function fetchReference(
     referenceCache.set(key, { data, ts: Date.now() });
     return data;
   } catch (e) {
-    if (e instanceof Error && e.name === "AbortError") return null;
+    if (signal?.aborted) return null;
     console.error(`Error fetching reference "${ref}":`, e);
     return null;
   }

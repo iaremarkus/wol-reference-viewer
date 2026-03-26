@@ -22,7 +22,7 @@ export class ReferenceModal extends Modal {
         this.titleEl.setText(this.verseRef);
 
         this.displayMessage();
-        this.fetchAndDisplay();
+        void this.fetchAndDisplay();
     }
 
     onClose() {
@@ -53,7 +53,7 @@ export class ReferenceModal extends Modal {
 
         const buttonContainer = contentEl.createDiv({ cls: 'ref-modal-button-container' });
         new ButtonComponent(buttonContainer)
-            .setButtonText('View on WOL')
+            .setButtonText('View on wol.jw.org')
             .setCta()
             .onClick(() => {
                 window.open(

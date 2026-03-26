@@ -1,4 +1,4 @@
-import WolPlugin, { ReferenceDisplayOption } from './main';
+import WolPlugin from './main';
 import { appendHTML } from './types';
 import { ReferenceModal } from './ReferenceModal';
 import { ReferencePopover } from './ReferencePopover';
@@ -33,7 +33,7 @@ export class ReferenceParser {
 
         const textNodes: Node[] = [];
         let node;
-        while (node = walker.nextNode()) {
+        while ((node = walker.nextNode()) !== null) {
             textNodes.push(node);
         }
 
@@ -75,7 +75,7 @@ export class ReferenceParser {
                 fragment.appendChild(callout);
                 calloutEl = callout;
 
-                fetchReference(ref).then(data => {
+                void fetchReference(ref).then(data => {
                     contentEl.empty();
                     if (!data || data.results.length === 0) {
                         contentEl.createEl('p', { text: 'No results found.' });
@@ -119,7 +119,7 @@ export class ReferenceParser {
         }
     }
 
-    private async setupReferenceClickHandler(container: HTMLElement) {
+    private setupReferenceClickHandler(container: HTMLElement) {
         const refElements = container.querySelectorAll('.wol-ref-link');
 
         for (let i = 0; i < refElements.length; i++) {
@@ -127,8 +127,8 @@ export class ReferenceParser {
             const ref = element.getAttribute('data-ref');
 
             if (ref) {
-                element.addEventListener('click', async () => {
-                    await this.displayReference(ref, element);
+                element.addEventListener('click', () => {
+                    void this.displayReference(ref, element);
                 });
             }
         }
@@ -142,11 +142,7 @@ export class ReferenceParser {
                 new ReferenceModal(this.plugin.app, ref).open();
                 break;
             case 'popover':
-                ReferencePopover.getInstance(this.plugin.app).show(clickedElement, ref);
-                break;
-            default:
-                console.warn(`Unknown display option: ${displayOption}. Defaulting to modal.`);
-                new ReferenceModal(this.plugin.app, ref).open();
+                await ReferencePopover.getInstance(this.plugin.app).show(clickedElement, ref);
                 break;
         }
     }

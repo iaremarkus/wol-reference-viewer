@@ -25,8 +25,6 @@ export class ReferencePopover {
 
         this.popoverEl = document.createElement('div');
         this.popoverEl.addClass('ref-popover');
-        this.popoverEl.style.position = 'absolute';
-        this.popoverEl.style.zIndex = '9999';
 
         this.popoverEl.createEl('p', { text: 'Loading\u2026', cls: 'ref-popover-loading' });
 

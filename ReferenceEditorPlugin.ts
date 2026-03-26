@@ -33,7 +33,7 @@ class ReferenceInlineWidget extends WidgetType {
         body.textContent = 'Loading\u2026';
         wrap.appendChild(body);
 
-        fetchReference(this.ref).then(data => {
+        void fetchReference(this.ref).then(data => {
             body.empty();
             if (!data || data.results.length === 0) {
                 body.textContent = 'No results found.';
@@ -133,7 +133,7 @@ export function createReferenceEditorPlugin(plugin: WolPlugin) {
                             // Inline widgets handle their own events; only open modal/popover for plain refs
                             if (!isCallout) {
                                 if (plugin.settings.referenceDisplayOption === 'popover') {
-                                    ReferencePopover.getInstance(plugin.app).show(e.target as HTMLElement, match[1]);
+                                    void ReferencePopover.getInstance(plugin.app).show(e.target as HTMLElement, match[1]);
                                 } else {
                                     new ReferenceModal(plugin.app, match[1]).open();
                                 }

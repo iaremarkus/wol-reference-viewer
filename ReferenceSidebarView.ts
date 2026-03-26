@@ -119,12 +119,12 @@ export class ReferenceSidebarView extends ItemView {
     }
 
     private fillPlaceholder(ref: string, data: ReferenceData | null) {
-        const item = this.contentEl.querySelector(
+        const item = this.contentEl.querySelector<HTMLElement>(
             `.ref-sidebar-item[data-ref="${CSS.escape(ref)}"]`
-        ) as HTMLElement | null;
+        );
         if (!item) return;
 
-        const body = item.querySelector('.ref-sidebar-body') as HTMLElement | null;
+        const body = item.querySelector<HTMLElement>('.ref-sidebar-body');
         if (!body) return;
 
         body.empty();

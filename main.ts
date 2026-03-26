@@ -3,7 +3,6 @@ import { clearReferenceCache } from './referenceService';
 import { ReferenceParser } from './ReferenceParser';
 import { ReferenceSidebarView, VIEW_TYPE_REFERENCE_SIDEBAR } from './ReferenceSidebarView';
 import { createReferenceEditorPlugin } from './ReferenceEditorPlugin';
-import styles from './styles.css';
 
 // Define the display options
 export type ReferenceDisplayOption = 'modal' | 'popover';
@@ -22,16 +21,7 @@ export default class WolPlugin extends Plugin {
 	settings: WolPluginSettings;
 	private referenceParser: ReferenceParser;
 
-	private styleEl: HTMLStyleElement;
-
 	async onload() {
-		console.log('Loading WOL Reference Tools');
-
-		this.styleEl = document.createElement('style');
-		this.styleEl.id = 'wol-reference-tools-styles';
-		this.styleEl.textContent = styles;
-		document.head.appendChild(this.styleEl);
-
 		await this.loadSettings();
 
 		this.referenceParser = new ReferenceParser(this);
@@ -40,7 +30,7 @@ export default class WolPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_REFERENCE_SIDEBAR, (leaf) => new ReferenceSidebarView(leaf));
 
 		// Register the markdown post processor
-		this.registerMarkdownPostProcessor(async (el, _ctx) => {
+		this.registerMarkdownPostProcessor((el, _ctx) => {
 			this.referenceParser.setupReferenceLinks(el);
 		});
 
@@ -95,10 +85,7 @@ export default class WolPlugin extends Plugin {
 		});
 	}
 
-	onunload() {
-		console.log('Unloading WOL Reference Tools');
-		this.styleEl?.remove();
-	}
+	onunload() {}
 
 	private async activateSidebar() {
 		const { workspace } = this.app;
@@ -114,12 +101,11 @@ export default class WolPlugin extends Plugin {
 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR);
 		if (leaves.length === 0) return;
 
-		const rightSplit = this.app.workspace.rightSplit;
-		if ((rightSplit as any)?.collapsed) return;
+		if (this.app.workspace.rightSplit?.collapsed) return;
 
 		const view = leaves[0].view;
 		if (view instanceof ReferenceSidebarView) {
-			view.update(file);
+			void view.update(file);
 		}
 	}
 
@@ -149,7 +135,7 @@ class WolSettingTab extends PluginSettingTab {
 			.setName('Reference display option')
 			.setDesc('Choose how references are displayed when clicked.')
 			.addDropdown(dropdown => dropdown
-				.addOption('modal', 'Modal Dialog')
+				.addOption('modal', 'Modal dialog')
 				.addOption('popover', 'Pop-over')
 				.setValue(this.plugin.settings.referenceDisplayOption)
 				.onChange(async (value) => {
