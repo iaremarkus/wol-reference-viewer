@@ -79,4 +79,4 @@ scriptures.forEach(s => dv.paragraph(s + "> <br />"));
 
 ## Author
 
-[@iaremarkus](https://github.com/iaremarkusdev)
+[@iaremarkus](https://github.com/iaremarkus)
