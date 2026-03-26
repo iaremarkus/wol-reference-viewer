@@ -68,6 +68,13 @@ export default class WolPlugin extends Plugin {
 			})
 		);
 
+		// Active-leaf-change: update sidebar when user switches tabs
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', () => {
+				this.updateSidebar(this.app.workspace.getActiveFile());
+			})
+		);
+
 		// Once the workspace is ready, open the sidebar and populate it
 		this.app.workspace.onLayoutReady(async () => {
 			await this.activateSidebar();

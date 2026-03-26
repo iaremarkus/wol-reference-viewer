@@ -1,3 +1,7 @@
+/* ============================================================
+   Inline reference links (reading mode)
+   ============================================================ */
+
 .wol-ref-link {
   color: var(--color-accent);
   cursor: pointer;
@@ -12,7 +16,7 @@
   opacity: 0.8;
 }
 
-/* New style for custom verlink class */
+/* Legacy verlink class */
 .verlink {
   color: var(--text-accent);
   text-decoration: none;
@@ -23,76 +27,10 @@
   text-decoration: underline;
 }
 
-.ref-modal .modal-content {
-  padding: 20px;
-  font-family: var(--font-family);
-}
+/* ============================================================
+   Live Preview editor decoration
+   ============================================================ */
 
-.ref-modal p {
-  margin-bottom: 10px;
-  line-height: 1.8;
-}
-
-.ref-modal p:last-child {
-  margin-bottom: 0;
-}
-
-.ref-modal-reference {
-  font-size: 0.9em;
-  color: var(--text-muted);
-  font-style: italic;
-  margin-top: 15px;
-  text-align: right;
-}
-
-.ref-modal-wol-link,
-.ref-popover-wol-link,
-.ref-sidebar-wol-link {
-  text-decoration: none;
-  font-size: 80%;
-  font-weight: 500;
-  color: var(--color-accent);
-  display: inline-block;
-}
-
-.ref-modal-wol-link:hover,
-.ref-popover-wol-link:hover,
-.ref-sidebar-wol-link:hover {
-  text-decoration: underline;
-}
-
-.ref-modal-button-container button {
-  font-size: 80%;
-  font-weight: 600 !important;
-}
-
-.ref-modal-result > li {
-  list-style: none;
-}
-
-.ref-modal-result ol > li::marker,
-.ref-modal-result ul > li::marker {
-  display: none !important;
-}
-
-.resultItems {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.resultItems ::marker {
-  display: none !important;
-  opacity: 0 !important;
-  color: transparent;
-}
-
-.mod-cta {
-  padding: 8px 10px 10px !important;
-  line-height: 1 !important;
-  height: auto !important;
-}
-
-/* Live Preview editor decoration */
 .cm-wol-ref {
   color: var(--color-accent);
   opacity: 0.8;
@@ -108,95 +46,108 @@
   opacity: 1;
 }
 
-/* Inline reference result widget rendered in the editor for !!ref!!> */
-.cm-ref-inline-result,
-.ref-callout {
-  background-color: transparent;
-  box-shadow: none;
+/* ============================================================
+   Modal
+   ============================================================ */
+
+.modal-header {
+  margin: 0 0 5px;
 }
 
-.cm-ref-inline-body,
-.ref-callout .callout-content {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--background-modifier-border);
-  padding: 15px;
-  border-radius: 10px;
-  font-size: 90%;
-  box-shadow: none;
+.modal-header .modal-title {
+  font-weight: 600;
+  font-size: 120%;
 }
 
-.cm-ref-inline-label,
-.ref-callout .callout-title {
-  font-size: 90%;
-  font-weight: 500;
-  color: var(--text-normal) !important;
-  margin-left: 3%;
-  width: 94%;
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 5px 10px;
-  border-radius: 10px 10px 0 0;
-  box-shadow: none;
-  line-height: inherit;
+.ref-modal .modal-content {
+  padding: 20px;
+  font-family: var(--font-family);
 }
 
-.ref-callout .callout-title-inner {
-  font-weight: inherit;
+.ref-modal p {
+  margin-bottom: 0px;
+  line-height: 1.6;
 }
 
-.cm-ref-inline-item,
-.ref-callout-result {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 6px;
-}
-
-.cm-ref-inline-item:last-child,
-.ref-callout-result:last-child {
+.ref-modal p:last-child {
   margin-bottom: 0;
 }
 
-.cm-ref-inline-item a,
-.ref-callout-result a {
-  color: var(--text-accent);
-  text-decoration: none;
+.ref-modal-reference {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 15px;
+  text-align: right;
 }
 
-.cm-ref-inline-item a:hover,
-.ref-callout-result a:hover {
-  text-decoration: underline;
+.ref-modal-result {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 0 !important;
 }
 
-.cm-ref-inline-body p,
-.ref-callout .callout-content p {
+.ref-modal-result p {
   margin: 0 !important;
 }
 
-/* Add style for popover paragraph text */
+.ref-modal-result > li {
+  list-style: none;
+}
+
+.ref-modal-result ol > li::marker,
+.ref-modal-result ul > li::marker {
+  display: none !important;
+}
+
+.ref-modal-button-container {
+  margin-top: 5px;
+}
+
+.ref-modal-button-container button {
+  font-size: 80%;
+  font-weight: 600 !important;
+}
+
+.mod-cta {
+  padding: 8px 10px 10px !important;
+  line-height: 1 !important;
+  height: auto !important;
+}
+
+/* ============================================================
+   Popover
+   ============================================================ */
+
 .ref-popover p {
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
-.ref-number,
-span.v .vl {
-  font-size: 70%;
-  font-weight: 600;
-  opacity: 0.5;
-  padding: 1px 2px;
-  position: relative;
-  top: -1px;
-  margin: 0 3px;
-  line-height: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
+/* ============================================================
+   Shared WOL link style (modal / popover / sidebar)
+   ============================================================ */
+
+.ref-modal-wol-link,
+.ref-popover-wol-link,
+.ref-sidebar-wol-link {
+  color: var(--color-accent);
   text-decoration: none;
+  font-size: 80%;
+  font-weight: 500;
+  display: inline-block;
 }
 
-span.v .b {
-  display: none;
+.ref-modal-wol-link:hover,
+.ref-popover-wol-link:hover,
+.ref-sidebar-wol-link:hover {
+  text-decoration: underline;
 }
 
-/* Sidebar */
+/* ============================================================
+   Sidebar
+   ============================================================ */
+
 .ref-sidebar {
   padding: 12px;
   display: flex;
@@ -255,14 +206,9 @@ span.v .b {
 
 .ref-sidebar-body p {
   font-size: var(--font-ui-small);
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--text-normal);
   margin: 0 0 6px 0;
-}
-
-.ref-sidebar-loading {
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 .ref-sidebar-error {
@@ -270,7 +216,7 @@ span.v .b {
   font-size: var(--font-ui-smaller);
 }
 
-/* WOL search result cards */
+/* WOL result cards inside sidebar */
 .ref-sidebar-wol-result {
   font-size: var(--font-ui-small);
   line-height: 1.6;
@@ -298,8 +244,111 @@ span.v .b {
   text-decoration: underline;
 }
 
-/* Inline callout */
+/* ============================================================
+   Inline callout (reading mode) & inline widget (editor)
+   ============================================================ */
+
+.cm-ref-inline-result,
+.ref-callout {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.cm-ref-inline-body,
+.ref-callout .callout-content {
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--background-modifier-border);
+  padding: 15px;
+  border-radius: 10px;
+  font-size: 90%;
+  box-shadow: none;
+}
+
+.cm-ref-inline-body p,
+.ref-callout .callout-content p {
+  margin: 0 !important;
+}
+
+.cm-ref-inline-label,
+.ref-callout .callout-title {
+  font-size: 90%;
+  font-weight: 500;
+  color: var(--text-normal) !important;
+  margin-left: 3%;
+  width: 94%;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 5px 10px;
+  border-radius: 10px 10px 0 0;
+  box-shadow: none;
+  line-height: inherit;
+}
+
+.ref-callout .callout-title-inner {
+  font-weight: inherit;
+}
+
+.cm-ref-inline-item,
+.ref-callout-result {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.cm-ref-inline-item:last-child,
+.ref-callout-result:last-child {
+  margin-bottom: 0;
+}
+
+.cm-ref-inline-item a,
+.ref-callout-result a {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.cm-ref-inline-item a:hover,
+.ref-callout-result a:hover {
+  text-decoration: underline;
+}
+
+/* Loading state (sidebar & callout) */
+.ref-sidebar-loading,
 .ref-callout-loading {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* ============================================================
+   WOL content formatting (verse numbers, result lists)
+   ============================================================ */
+
+.ref-number,
+.verse-number,
+span.v .vl {
+  font-size: 70%;
+  font-weight: 600;
+  opacity: 0.5;
+  padding: 1px 2px;
+  position: relative;
+  top: -1px;
+  margin: 0 3px;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+span.v .b {
+  display: none;
+}
+
+.resultItems {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.resultItems ::marker {
+  display: none !important;
+  opacity: 0 !important;
+  color: transparent;
 }

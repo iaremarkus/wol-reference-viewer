@@ -26,6 +26,12 @@ export function clearReferenceCache() {
   referenceCache.clear();
 }
 
+export function isCached(ref: string): boolean {
+  const key = slugify(ref);
+  const entry = referenceCache.get(key);
+  return !!entry && isFresh(entry);
+}
+
 export async function fetchReference(
   ref: string,
   signal?: AbortSignal,
