@@ -19,10 +19,187 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => VersePlugin
+  default: () => WolPlugin
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian4 = require("obsidian");
+
+// referenceService.ts
+var WORKER_BASE = "https://wol-worker.iaremark.us";
+var CACHE_TTL_MS = 30 * 60 * 1e3;
+var referenceCache = /* @__PURE__ */ new Map();
+function slugify(ref) {
+  return ref.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/, "");
+}
+function isFresh(entry) {
+  return Date.now() - entry.ts < CACHE_TTL_MS;
+}
+function clearReferenceCache() {
+  referenceCache.clear();
+}
+async function fetchReference(ref, signal) {
+  var _a;
+  const key = slugify(ref);
+  const cached = referenceCache.get(key);
+  if (cached && isFresh(cached))
+    return cached.data;
+  try {
+    const response = await fetch(`${WORKER_BASE}/${encodeURIComponent(ref)}`, {
+      signal
+    });
+    if (!response.ok)
+      return null;
+    const raw = await response.json();
+    const data = {
+      type: "reference",
+      ref,
+      results: (_a = raw.results) != null ? _a : []
+    };
+    referenceCache.set(key, { data, ts: Date.now() });
+    return data;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError")
+      return null;
+    console.error(`Error fetching reference "${ref}":`, e);
+    return null;
+  }
+}
+
+// ReferenceModal.ts
+var import_obsidian = require("obsidian");
+var ReferenceModal = class extends import_obsidian.Modal {
+  constructor(app, verseRef) {
+    super(app);
+    this.verseRef = verseRef;
+    this.data = null;
+    this.loading = true;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("ref-modal");
+    this.titleEl.setText(this.verseRef);
+    this.displayMessage();
+    this.fetchAndDisplay();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+  displayMessage() {
+    const { contentEl } = this;
+    contentEl.empty();
+    if (this.loading) {
+      contentEl.createEl("p", { text: "Loading\u2026" });
+      return;
+    }
+    if (!this.data) {
+      contentEl.createEl("p", { text: "Error loading reference." });
+      return;
+    }
+    if (this.data.results.length === 0) {
+      contentEl.createEl("p", { text: "No results found." });
+    } else {
+      for (const html of this.data.results) {
+        contentEl.createDiv({ cls: "ref-modal-result" }).innerHTML = html;
+      }
+    }
+    const buttonContainer = contentEl.createDiv({ cls: "ref-modal-button-container" });
+    new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
+      window.open(
+        `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.verseRef)}`,
+        "_blank"
+      );
+    });
+  }
+  async fetchAndDisplay() {
+    this.data = await fetchReference(this.verseRef);
+    this.loading = false;
+    this.displayMessage();
+  }
+};
+
+// ReferencePopover.ts
+var _ReferencePopover = class {
+  constructor(app) {
+    this.popoverEl = null;
+    this.showGeneration = 0;
+    this.handleOutsideClick = (event) => {
+      if (this.popoverEl && !this.popoverEl.contains(event.target)) {
+        this.hide();
+      }
+    };
+    this.app = app;
+  }
+  static getInstance(app) {
+    if (!_ReferencePopover.instance) {
+      _ReferencePopover.instance = new _ReferencePopover(app);
+    }
+    return _ReferencePopover.instance;
+  }
+  async show(targetEl, verseRef) {
+    this.hide();
+    const generation = ++this.showGeneration;
+    this.popoverEl = document.createElement("div");
+    this.popoverEl.addClass("ref-popover");
+    this.popoverEl.style.position = "absolute";
+    this.popoverEl.style.zIndex = "9999";
+    this.popoverEl.style.maxWidth = "300px";
+    this.popoverEl.style.padding = "10px";
+    this.popoverEl.style.borderRadius = "var(--radius-m)";
+    this.popoverEl.style.backgroundColor = "var(--background-secondary)";
+    this.popoverEl.style.border = "1px solid var(--background-modifier-border)";
+    this.popoverEl.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
+    this.popoverEl.style.color = "var(--text-normal)";
+    this.popoverEl.style.fontSize = "var(--font-ui-small)";
+    this.popoverEl.style.lineHeight = "1.5";
+    this.popoverEl.createEl("p", { text: "Loading\u2026", cls: "ref-popover-loading" });
+    document.body.appendChild(this.popoverEl);
+    this.positionPopover(targetEl);
+    const data = await fetchReference(verseRef);
+    if (generation !== this.showGeneration)
+      return;
+    this.updateContent(data);
+    document.addEventListener("click", this.handleOutsideClick);
+    this.popoverEl.addEventListener("click", (e) => e.stopPropagation());
+  }
+  updateContent(data) {
+    if (!this.popoverEl)
+      return;
+    this.popoverEl.empty();
+    if (!data || data.results.length === 0) {
+      this.popoverEl.createEl("p", { text: "No results found." });
+      return;
+    }
+    for (const html of data.results) {
+      this.popoverEl.createDiv({ cls: "ref-popover-result" }).innerHTML = html;
+    }
+  }
+  positionPopover(targetEl) {
+    if (!this.popoverEl)
+      return;
+    const targetRect = targetEl.getBoundingClientRect();
+    const popoverRect = this.popoverEl.getBoundingClientRect();
+    let top = targetRect.bottom + window.scrollY + 5;
+    let left = targetRect.left + window.scrollX;
+    if (left + popoverRect.width > window.innerWidth) {
+      left = window.innerWidth - popoverRect.width - 20;
+    }
+    if (top + popoverRect.height > window.innerHeight && targetRect.top > popoverRect.height) {
+      top = targetRect.top + window.scrollY - popoverRect.height - 5;
+    }
+    this.popoverEl.style.top = `${top}px`;
+    this.popoverEl.style.left = `${left}px`;
+  }
+  hide() {
+    if (this.popoverEl) {
+      this.popoverEl.remove();
+      this.popoverEl = null;
+      document.removeEventListener("click", this.handleOutsideClick);
+    }
+  }
+};
+var ReferencePopover = _ReferencePopover;
+ReferencePopover.instance = null;
 
 // bibleBooks.ts
 var BIBLE_BOOKS = {
@@ -112,263 +289,22 @@ function isBibleVerse(ref) {
   return false;
 }
 
-// verseService.ts
-var WORKER_BASE = "https://verse-api-worker.mark-11f.workers.dev";
-var verseCache = /* @__PURE__ */ new Map();
-var wolCache = /* @__PURE__ */ new Map();
-function clearVerseCache() {
-  verseCache.clear();
-  wolCache.clear();
-}
-async function fetchVerse(verseRef) {
-  const key = verseRef.trim().toLowerCase();
-  if (verseCache.has(key))
-    return verseCache.get(key);
-  try {
-    const response = await fetch(`${WORKER_BASE}/${encodeURIComponent(verseRef)}`);
-    if (!response.ok)
-      return null;
-    const raw = await response.json();
-    const data = { type: "verse", ...raw };
-    verseCache.set(key, data);
-    return data;
-  } catch (e) {
-    console.error(`Error fetching verse "${verseRef}":`, e);
-    return null;
-  }
-}
-async function fetchWol(ref) {
-  var _a;
-  const key = ref.trim().toLowerCase();
-  if (wolCache.has(key))
-    return wolCache.get(key);
-  try {
-    const response = await fetch(`${WORKER_BASE}/wol/${encodeURIComponent(ref)}`);
-    if (!response.ok)
-      return null;
-    const raw = await response.json();
-    const data = { type: "wol", results: (_a = raw.results) != null ? _a : [] };
-    wolCache.set(key, data);
-    return data;
-  } catch (e) {
-    console.error(`Error fetching WOL "${ref}":`, e);
-    return null;
-  }
-}
-async function fetchReference(ref) {
-  return isBibleVerse(ref) ? fetchVerse(ref) : fetchWol(ref);
-}
-
-// VerseModal.ts
-var import_obsidian = require("obsidian");
-
-// verse-stylist.ts
-function parseVerseNumbers(verseReference) {
-  const verseNumbers = [];
-  const versePartMatch = verseReference.match(/:(.+)$/);
-  const versePart = versePartMatch ? versePartMatch[1] : verseReference;
-  for (const segment of versePart.split(",")) {
-    const parts = segment.trim().match(/^(\d+)(?:-(\d+))?$/);
-    if (parts) {
-      const start = parseInt(parts[1], 10);
-      verseNumbers.push(start);
-      if (parts[2]) {
-        const end = parseInt(parts[2], 10);
-        for (let i = start + 1; i <= end; i++) {
-          verseNumbers.push(i);
-        }
-      }
-    }
-  }
-  return verseNumbers;
-}
-function renderVerseText(container, text, verseRef) {
-  const numbers = parseVerseNumbers(verseRef);
-  if (numbers.length === 0) {
-    container.appendText(text);
-    return;
-  }
-  numbers.sort((a, b) => b - a);
-  const pattern = numbers.map((n) => `(?<!\\d)${n}(?!\\d)`).join("|");
-  const regex = new RegExp(pattern, "g");
-  let lastIndex = 0;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      container.appendText(text.slice(lastIndex, match.index));
-    }
-    container.createSpan({ cls: "verse-number", text: match[0] });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    container.appendText(text.slice(lastIndex));
-  }
-}
-
-// VerseModal.ts
-var VerseModal = class extends import_obsidian.Modal {
-  constructor(app, verseRef) {
-    super(app);
-    this.verseRef = verseRef;
-    this.data = null;
-    this.loading = true;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("verse-modal");
-    this.titleEl.setText(this.verseRef);
-    this.displayMessage();
-    this.fetchAndDisplay();
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-  displayMessage() {
-    const { contentEl } = this;
-    contentEl.empty();
-    if (this.loading) {
-      contentEl.createEl("p", { text: "Loading\u2026" });
-      return;
-    }
-    if (!this.data) {
-      contentEl.createEl("p", { text: "Error loading reference." });
-      return;
-    }
-    if (this.data.type === "verse") {
-      const p = contentEl.createEl("p");
-      renderVerseText(p, this.data.text, this.verseRef);
-      const buttonContainer = contentEl.createDiv({ cls: "verse-modal-button-container" });
-      new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
-        window.open(
-          `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.data.reference)}`,
-          "_blank"
-        );
-      });
-    } else {
-      if (this.data.results.length === 0) {
-        contentEl.createEl("p", { text: "No results found." });
-      } else {
-        for (const html of this.data.results) {
-          contentEl.createDiv({ cls: "verse-modal-wol-result" }).innerHTML = html;
-        }
-      }
-      const buttonContainer = contentEl.createDiv({ cls: "verse-modal-button-container" });
-      new import_obsidian.ButtonComponent(buttonContainer).setButtonText("View on WOL").setCta().onClick(() => {
-        window.open(
-          `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(this.verseRef)}`,
-          "_blank"
-        );
-      });
-    }
-  }
-  async fetchAndDisplay() {
-    this.data = await fetchReference(this.verseRef);
-    this.loading = false;
-    this.displayMessage();
-  }
-};
-
-// VersePopover.ts
-var _VersePopover = class {
-  constructor(app) {
-    this.popoverEl = null;
-    this.handleOutsideClick = (event) => {
-      if (this.popoverEl && !this.popoverEl.contains(event.target)) {
-        this.hide();
-      }
-    };
-    this.app = app;
-  }
-  static getInstance(app) {
-    if (!_VersePopover.instance) {
-      _VersePopover.instance = new _VersePopover(app);
-    }
-    return _VersePopover.instance;
-  }
-  async show(targetEl, verseRef) {
-    this.hide();
-    this.popoverEl = document.createElement("div");
-    this.popoverEl.addClass("verse-popover");
-    this.popoverEl.style.position = "absolute";
-    this.popoverEl.style.zIndex = "9999";
-    this.popoverEl.style.maxWidth = "300px";
-    this.popoverEl.style.padding = "10px";
-    this.popoverEl.style.borderRadius = "var(--radius-m)";
-    this.popoverEl.style.backgroundColor = "var(--background-secondary)";
-    this.popoverEl.style.border = "1px solid var(--background-modifier-border)";
-    this.popoverEl.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
-    this.popoverEl.style.color = "var(--text-normal)";
-    this.popoverEl.style.fontSize = "var(--font-ui-small)";
-    this.popoverEl.style.lineHeight = "1.5";
-    this.popoverEl.createEl("p", { text: "Loading verse\u2026", cls: "verse-popover-loading" });
-    document.body.appendChild(this.popoverEl);
-    this.positionPopover(targetEl);
-    const data = await fetchVerse(verseRef);
-    this.updateContent(data, verseRef);
-    document.addEventListener("click", this.handleOutsideClick);
-    this.popoverEl.addEventListener("click", (e) => e.stopPropagation());
-  }
-  updateContent(verseData, verseRef) {
-    if (!this.popoverEl)
-      return;
-    this.popoverEl.empty();
-    if (verseData) {
-      const p = this.popoverEl.createEl("p");
-      renderVerseText(p, verseData.text, verseRef);
-      const wolLink = this.popoverEl.createEl("a", {
-        text: "View on WOL",
-        href: `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(verseData.reference)}`,
-        cls: "verse-popover-wol-link"
-      });
-      wolLink.setAttr("target", "_blank");
-    } else {
-      this.popoverEl.createEl("p", { text: "Verse not found." });
-    }
-  }
-  positionPopover(targetEl) {
-    if (!this.popoverEl)
-      return;
-    const targetRect = targetEl.getBoundingClientRect();
-    const popoverRect = this.popoverEl.getBoundingClientRect();
-    let top = targetRect.bottom + window.scrollY + 5;
-    let left = targetRect.left + window.scrollX;
-    if (left + popoverRect.width > window.innerWidth) {
-      left = window.innerWidth - popoverRect.width - 20;
-    }
-    if (top + popoverRect.height > window.innerHeight && targetRect.top > popoverRect.height) {
-      top = targetRect.top + window.scrollY - popoverRect.height - 5;
-    }
-    this.popoverEl.style.top = `${top}px`;
-    this.popoverEl.style.left = `${left}px`;
-  }
-  hide() {
-    if (this.popoverEl) {
-      this.popoverEl.remove();
-      this.popoverEl = null;
-      document.removeEventListener("click", this.handleOutsideClick);
-    }
-  }
-};
-var VersePopover = _VersePopover;
-VersePopover.instance = null;
-
-// VerseParser.ts
-var VerseParser = class {
+// ReferenceParser.ts
+var ReferenceParser = class {
   constructor(plugin) {
     this.plugin = plugin;
   }
-  setupVerseLinks(container) {
-    this.transformVerseMarkers(container);
-    this.setupVerseClickHandler(container);
+  setupReferenceLinks(container) {
+    this.transformReferenceMarkers(container);
+    this.setupReferenceClickHandler(container);
   }
-  transformVerseMarkers(container) {
+  transformReferenceMarkers(container) {
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
       {
         acceptNode: function(node2) {
-          if (node2.nodeValue && /!!(.+?)!!/.test(node2.nodeValue)) {
+          if (node2.nodeValue && /!!(.+?)!!(>?)/.test(node2.nodeValue)) {
             return NodeFilter.FILTER_ACCEPT;
           }
           return NodeFilter.FILTER_REJECT;
@@ -381,88 +317,138 @@ var VerseParser = class {
       textNodes.push(node);
     }
     for (const textNode of textNodes) {
-      if (textNode.nodeValue && /!!(.+?)!!/.test(textNode.nodeValue)) {
+      if (textNode.nodeValue && /!!(.+?)!!(>?)/.test(textNode.nodeValue)) {
         this.processTextNode(textNode);
       }
     }
   }
   processTextNode(textNode) {
-    var _a;
     const text = textNode.nodeValue || "";
-    const regex = /!!(.+?)!!/g;
+    const regex = /!!(.+?)!!(>?)/g;
     let lastIndex = 0;
     let match;
     const fragment = document.createDocumentFragment();
+    let calloutEl = null;
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
       }
-      const verseRef = match[1];
-      const verseElement = document.createElement("span");
-      verseElement.className = isBibleVerse(verseRef) ? "verse-reference" : "verse-reference wol-reference";
-      verseElement.setAttribute("data-verse-ref", verseRef);
-      verseElement.textContent = verseRef;
-      fragment.appendChild(verseElement);
+      const ref = match[1];
+      const isCallout = match[2] === ">";
+      if (isCallout) {
+        const callout = document.createElement("div");
+        callout.className = "callout ref-callout";
+        callout.setAttribute("data-callout", "wol-reference");
+        const titleEl = callout.createDiv({ cls: "callout-title" });
+        titleEl.createDiv({ cls: "callout-title-inner", text: ref });
+        const contentEl = callout.createDiv({ cls: "callout-content" });
+        contentEl.createEl("p", { cls: "ref-callout-loading", text: "Loading\u2026" });
+        fragment.appendChild(callout);
+        calloutEl = callout;
+        fetchReference(ref).then((data) => {
+          contentEl.empty();
+          if (!data || data.results.length === 0) {
+            contentEl.createEl("p", { text: "No results found." });
+            return;
+          }
+          for (const html of data.results) {
+            const item = contentEl.createDiv({ cls: "ref-callout-result" });
+            item.innerHTML = html;
+          }
+        });
+      } else {
+        const refElement = document.createElement("span");
+        refElement.className = isBibleVerse(ref) ? "wol-ref-link" : "wol-ref-link wol-ref-external";
+        refElement.setAttribute("data-ref", ref);
+        refElement.textContent = ref;
+        fragment.appendChild(refElement);
+      }
       lastIndex = match.index + match[0].length;
     }
     if (lastIndex < text.length) {
       fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
     }
-    (_a = textNode.parentNode) == null ? void 0 : _a.replaceChild(fragment, textNode);
+    const parent = textNode.parentNode;
+    parent == null ? void 0 : parent.replaceChild(fragment, textNode);
+    if (calloutEl && parent instanceof HTMLElement && parent.tagName === "P") {
+      const nonEmptyChildren = Array.from(parent.childNodes).filter(
+        (n) => {
+          var _a;
+          return !(n.nodeType === Node.TEXT_NODE && ((_a = n.textContent) == null ? void 0 : _a.trim()) === "");
+        }
+      );
+      if (nonEmptyChildren.length === 1 && nonEmptyChildren[0] === calloutEl) {
+        parent.after(calloutEl);
+        parent.remove();
+      }
+    }
   }
-  async setupVerseClickHandler(container) {
-    const verseElements = container.querySelectorAll(".verse-reference");
-    for (let i = 0; i < verseElements.length; i++) {
-      const element = verseElements[i];
-      const verseRef = element.getAttribute("data-verse-ref");
-      if (verseRef) {
+  async setupReferenceClickHandler(container) {
+    const refElements = container.querySelectorAll(".wol-ref-link");
+    for (let i = 0; i < refElements.length; i++) {
+      const element = refElements[i];
+      const ref = element.getAttribute("data-ref");
+      if (ref) {
         element.addEventListener("click", async () => {
-          await this.displayVerse(verseRef, element);
+          await this.displayReference(ref, element);
         });
       }
     }
   }
-  async displayVerse(verseRef, clickedElement) {
-    const displayOption = this.plugin.settings.verseDisplayOption;
+  async displayReference(ref, clickedElement) {
+    const displayOption = this.plugin.settings.referenceDisplayOption;
     switch (displayOption) {
       case "modal":
-        new VerseModal(this.plugin.app, verseRef).open();
+        new ReferenceModal(this.plugin.app, ref).open();
         break;
       case "popover":
-        VersePopover.getInstance(this.plugin.app).show(clickedElement, verseRef);
+        ReferencePopover.getInstance(this.plugin.app).show(clickedElement, ref);
         break;
       default:
-        console.warn(`Unknown verse display option: ${displayOption}. Defaulting to modal.`);
-        new VerseModal(this.plugin.app, verseRef).open();
+        console.warn(`Unknown display option: ${displayOption}. Defaulting to modal.`);
+        new ReferenceModal(this.plugin.app, ref).open();
         break;
     }
   }
 };
 
-// VerseSidebarView.ts
+// ReferenceSidebarView.ts
 var import_obsidian2 = require("obsidian");
-var VIEW_TYPE_VERSE_SIDEBAR = "verse-sidebar-view";
-var VERSE_REGEX = /!!(.+?)!!/g;
-var VerseSidebarView = class extends import_obsidian2.ItemView {
+var VIEW_TYPE_REFERENCE_SIDEBAR = "reference-sidebar-view";
+var REF_REGEX = /!!(.+?)!!/g;
+var ReferenceSidebarView = class extends import_obsidian2.ItemView {
   constructor(leaf) {
     super(leaf);
+    this.updateGeneration = 0;
+    this.abortController = null;
   }
   getViewType() {
-    return VIEW_TYPE_VERSE_SIDEBAR;
+    return VIEW_TYPE_REFERENCE_SIDEBAR;
   }
   getDisplayText() {
-    return "Verses";
+    return "References";
   }
   getIcon() {
     return "book-open";
   }
   async onOpen() {
-    this.renderEmpty("Open a note with !!verse!! references to see them here.");
+    this.renderEmpty("Open a note with !!reference!! syntax to see results here.");
+    const file = this.app.workspace.getActiveFile();
+    if (file)
+      await this.update(file);
   }
   onClose() {
+    var _a;
+    (_a = this.abortController) == null ? void 0 : _a.abort();
+    this.updateGeneration++;
     return Promise.resolve();
   }
   async update(file) {
+    var _a;
+    (_a = this.abortController) == null ? void 0 : _a.abort();
+    const controller = new AbortController();
+    this.abortController = controller;
+    const { signal } = controller;
     if (!file) {
       this.renderEmpty("No file open.");
       return;
@@ -470,18 +456,28 @@ var VerseSidebarView = class extends import_obsidian2.ItemView {
     const content = await this.app.vault.read(file);
     const refs = this.extractRefs(content);
     if (refs.length === 0) {
-      this.renderEmpty("No verse references in this note.");
+      this.renderEmpty("No references in this note.");
       return;
     }
     this.renderPlaceholders(refs);
-    for (const ref of refs) {
-      fetchReference(ref).then((data) => this.fillPlaceholder(ref, data));
+    const generation = ++this.updateGeneration;
+    for (let i = 0; i < refs.length; i++) {
+      if (signal.aborted || generation !== this.updateGeneration)
+        return;
+      if (i > 0)
+        await new Promise((resolve) => setTimeout(resolve, 1e3));
+      if (signal.aborted || generation !== this.updateGeneration)
+        return;
+      const data = await fetchReference(refs[i], signal);
+      if (signal.aborted || generation !== this.updateGeneration)
+        return;
+      this.fillPlaceholder(refs[i], data);
     }
   }
   extractRefs(content) {
     const seen = /* @__PURE__ */ new Set();
     const refs = [];
-    const regex = new RegExp(VERSE_REGEX.source, "g");
+    const regex = new RegExp(REF_REGEX.source, "g");
     let match;
     while ((match = regex.exec(content)) !== null) {
       for (const part of match[1].split(";")) {
@@ -496,62 +492,96 @@ var VerseSidebarView = class extends import_obsidian2.ItemView {
   }
   renderEmpty(message) {
     this.contentEl.empty();
-    this.contentEl.addClass("verse-sidebar");
-    this.contentEl.createEl("p", { text: message, cls: "verse-sidebar-empty" });
+    this.contentEl.addClass("ref-sidebar");
+    this.contentEl.createEl("p", { text: message, cls: "ref-sidebar-empty" });
   }
   renderPlaceholders(refs) {
     this.contentEl.empty();
-    this.contentEl.addClass("verse-sidebar");
+    this.contentEl.addClass("ref-sidebar");
     for (const ref of refs) {
-      const item = this.contentEl.createDiv({ cls: "verse-sidebar-item" });
-      item.dataset.verseRef = ref;
-      const header = item.createDiv({ cls: "verse-sidebar-header" });
-      header.createDiv({ text: ref, cls: "verse-sidebar-ref" });
+      const item = this.contentEl.createDiv({ cls: "ref-sidebar-item" });
+      item.dataset.ref = ref;
+      const header = item.createDiv({ cls: "ref-sidebar-header" });
+      header.createDiv({ text: ref, cls: "ref-sidebar-ref" });
       const wolLink = header.createEl("a", {
         href: `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(ref)}`,
-        cls: "verse-sidebar-wol-icon"
+        cls: "ref-sidebar-wol-icon"
       });
       wolLink.setAttr("target", "_blank");
       wolLink.setAttr("aria-label", "View on WOL");
       (0, import_obsidian2.setIcon)(wolLink, "external-link");
-      const body = item.createDiv({ cls: "verse-sidebar-body" });
-      body.createEl("p", { text: "Loading\u2026", cls: "verse-sidebar-loading" });
+      const body = item.createDiv({ cls: "ref-sidebar-body" });
+      body.createEl("p", { text: "Loading\u2026", cls: "ref-sidebar-loading" });
     }
   }
   fillPlaceholder(ref, data) {
     const item = this.contentEl.querySelector(
-      `.verse-sidebar-item[data-verse-ref="${CSS.escape(ref)}"]`
+      `.ref-sidebar-item[data-ref="${CSS.escape(ref)}"]`
     );
     if (!item)
       return;
-    const body = item.querySelector(".verse-sidebar-body");
+    const body = item.querySelector(".ref-sidebar-body");
     if (!body)
       return;
     body.empty();
     if (!data) {
-      body.createEl("p", { text: "Could not load reference.", cls: "verse-sidebar-error" });
-    } else if (data.type === "verse") {
-      renderVerseText(body.createEl("p"), data.text, ref);
+      body.createEl("p", { text: "Could not load reference.", cls: "ref-sidebar-error" });
+    } else if (data.results.length === 0) {
+      body.createEl("p", { text: "No results found.", cls: "ref-sidebar-error" });
     } else {
-      if (data.results.length === 0) {
-        body.createEl("p", { text: "No results found.", cls: "verse-sidebar-error" });
-      } else {
-        for (const html of data.results) {
-          body.createDiv({ cls: "verse-sidebar-wol-result" }).innerHTML = html;
-        }
+      for (const html of data.results) {
+        body.createDiv({ cls: "ref-sidebar-wol-result" }).innerHTML = html;
       }
     }
   }
 };
 
-// VerseEditorPlugin.ts
+// ReferenceEditorPlugin.ts
 var import_view = require("@codemirror/view");
 var import_state = require("@codemirror/state");
 var import_obsidian3 = require("obsidian");
-var VERSE_RE = /!!(.+?)!!/g;
+var REF_RE = /!!(.+?)!!(>?)/g;
 var hideMark = import_view.Decoration.replace({});
-var verseMark = import_view.Decoration.mark({ class: "cm-verse-reference" });
-var wolMark = import_view.Decoration.mark({ class: "cm-verse-reference cm-verse-reference-wol" });
+var refMark = import_view.Decoration.mark({ class: "cm-wol-ref" });
+var wolMark = import_view.Decoration.mark({ class: "cm-wol-ref cm-wol-ref-external" });
+var ReferenceInlineWidget = class extends import_view.WidgetType {
+  constructor(ref) {
+    super();
+    this.ref = ref;
+  }
+  eq(other) {
+    return this.ref === other.ref;
+  }
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-ref-inline-result";
+    const label = document.createElement("div");
+    label.className = "cm-ref-inline-label";
+    label.textContent = this.ref;
+    wrap.appendChild(label);
+    const body = document.createElement("div");
+    body.className = "cm-ref-inline-body";
+    body.textContent = "Loading\u2026";
+    wrap.appendChild(body);
+    fetchReference(this.ref).then((data) => {
+      body.empty();
+      if (!data || data.results.length === 0) {
+        body.textContent = "No results found.";
+        return;
+      }
+      for (const html of data.results) {
+        const item = document.createElement("div");
+        item.className = "cm-ref-inline-item";
+        item.innerHTML = html;
+        body.appendChild(item);
+      }
+    });
+    return wrap;
+  }
+  ignoreEvent() {
+    return true;
+  }
+};
 function buildDecorations(view) {
   if (!view.state.field(import_obsidian3.editorLivePreviewField, false)) {
     return import_view.Decoration.none;
@@ -560,24 +590,31 @@ function buildDecorations(view) {
   const cursor = view.state.selection.main;
   for (const { from, to } of view.visibleRanges) {
     const text = view.state.doc.sliceString(from, to);
-    const re = new RegExp(VERSE_RE.source, "g");
+    const re = new RegExp(REF_RE.source, "g");
     let match;
     while ((match = re.exec(text)) !== null) {
+      const isCallout = match[2] === ">";
       const matchStart = from + match.index;
       const matchEnd = matchStart + match[0].length;
-      const innerStart = matchStart + 2;
-      const innerEnd = matchEnd - 2;
       if (cursor.from <= matchEnd && cursor.to >= matchStart)
         continue;
-      const mark = isBibleVerse(match[1]) ? verseMark : wolMark;
-      builder.add(matchStart, innerStart, hideMark);
-      builder.add(innerStart, innerEnd, mark);
-      builder.add(innerEnd, matchEnd, hideMark);
+      if (isCallout) {
+        builder.add(matchStart, matchEnd, import_view.Decoration.replace({
+          widget: new ReferenceInlineWidget(match[1])
+        }));
+      } else {
+        const innerStart = matchStart + 2;
+        const innerEnd = matchEnd - 2;
+        const mark = isBibleVerse(match[1]) ? refMark : wolMark;
+        builder.add(matchStart, innerStart, hideMark);
+        builder.add(innerStart, innerEnd, mark);
+        builder.add(innerEnd, matchEnd, hideMark);
+      }
     }
   }
   return builder.finish();
 }
-function createVerseEditorPlugin(plugin) {
+function createReferenceEditorPlugin(plugin) {
   return import_view.ViewPlugin.fromClass(
     class {
       constructor(view) {
@@ -599,18 +636,20 @@ function createVerseEditorPlugin(plugin) {
           if (pos === null)
             return;
           const line = view.state.doc.lineAt(pos);
-          const re = new RegExp(VERSE_RE.source, "g");
+          const re = new RegExp(REF_RE.source, "g");
           let match;
           while ((match = re.exec(line.text)) !== null) {
             const from = line.from + match.index;
             const to = from + match[0].length;
             if (pos >= from && pos <= to) {
               e.preventDefault();
-              const ref = match[1];
-              if (plugin.settings.verseDisplayOption === "popover") {
-                VersePopover.getInstance(plugin.app).show(e.target, ref);
-              } else {
-                new VerseModal(plugin.app, ref).open();
+              const isCallout = match[2] === ">";
+              if (!isCallout) {
+                if (plugin.settings.referenceDisplayOption === "popover") {
+                  ReferencePopover.getInstance(plugin.app).show(e.target, match[1]);
+                } else {
+                  new ReferenceModal(plugin.app, match[1]).open();
+                }
               }
               return;
             }
@@ -621,20 +660,27 @@ function createVerseEditorPlugin(plugin) {
   );
 }
 
+// styles.css
+var styles_default = '.wol-ref-link {\n  color: var(--color-accent);\n  cursor: pointer;\n  display: inline-block;\n}\n\n.wol-ref-link::before {\n  content: " \u{1F4D6} ";\n}\n\n.wol-ref-link:hover {\n  opacity: 0.8;\n}\n\n/* New style for custom verlink class */\n.verlink {\n  color: var(--text-accent);\n  text-decoration: none;\n  font-weight: bold;\n}\n\n.verlink:hover {\n  text-decoration: underline;\n}\n\n.ref-modal .modal-content {\n  padding: 20px;\n  font-family: var(--font-family);\n}\n\n.ref-modal p {\n  margin-bottom: 10px;\n  line-height: 1.8;\n}\n\n.ref-modal p:last-child {\n  margin-bottom: 0;\n}\n\n.ref-modal-reference {\n  font-size: 0.9em;\n  color: var(--text-muted);\n  font-style: italic;\n  margin-top: 15px;\n  text-align: right;\n}\n\n.ref-modal-wol-link,\n.ref-popover-wol-link,\n.ref-sidebar-wol-link {\n  text-decoration: none;\n  font-size: 80%;\n  font-weight: 500;\n  color: var(--color-accent);\n  display: inline-block;\n}\n\n.ref-modal-wol-link:hover,\n.ref-popover-wol-link:hover,\n.ref-sidebar-wol-link:hover {\n  text-decoration: underline;\n}\n\n.ref-modal-button-container button {\n  font-size: 80%;\n  font-weight: 600 !important;\n}\n\n.ref-modal-result > li {\n  list-style: none;\n}\n\n.ref-modal-result ol > li::marker,\n.ref-modal-result ul > li::marker {\n  display: none !important;\n}\n\n.resultItems {\n  margin: 0 !important;\n  padding: 0 !important;\n}\n\n.resultItems ::marker {\n  display: none !important;\n  opacity: 0 !important;\n  color: transparent;\n}\n\n.mod-cta {\n  padding: 8px 10px 10px !important;\n  line-height: 1 !important;\n  height: auto !important;\n}\n\n/* Live Preview editor decoration */\n.cm-wol-ref {\n  color: var(--color-accent);\n  opacity: 0.8;\n  font-weight: 500;\n  cursor: pointer;\n}\n\n.cm-wol-ref::before {\n  content: " ";\n}\n\n.cm-wol-ref:hover {\n  opacity: 1;\n}\n\n/* Inline reference result widget rendered in the editor for !!ref!!> */\n.cm-ref-inline-result,\n.ref-callout {\n  background-color: transparent;\n  box-shadow: none;\n}\n\n.cm-ref-inline-body,\n.ref-callout .callout-content {\n  background: rgba(0, 0, 0, 0.1);\n  border: 1px solid var(--background-modifier-border);\n  padding: 15px;\n  border-radius: 10px;\n  font-size: 90%;\n  box-shadow: none;\n}\n\n.cm-ref-inline-label,\n.ref-callout .callout-title {\n  font-size: 90%;\n  font-weight: 500;\n  color: var(--text-normal) !important;\n  margin-left: 3%;\n  width: 94%;\n  background-color: rgba(0, 0, 0, 0.2);\n  padding: 5px 10px;\n  border-radius: 10px 10px 0 0;\n  box-shadow: none;\n  line-height: inherit;\n}\n\n.ref-callout .callout-title-inner {\n  font-weight: inherit;\n}\n\n.cm-ref-inline-item,\n.ref-callout-result {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  margin-bottom: 6px;\n}\n\n.cm-ref-inline-item:last-child,\n.ref-callout-result:last-child {\n  margin-bottom: 0;\n}\n\n.cm-ref-inline-item a,\n.ref-callout-result a {\n  color: var(--text-accent);\n  text-decoration: none;\n}\n\n.cm-ref-inline-item a:hover,\n.ref-callout-result a:hover {\n  text-decoration: underline;\n}\n\n.cm-ref-inline-body p,\n.ref-callout .callout-content p {\n  margin: 0 !important;\n}\n\n/* Add style for popover paragraph text */\n.ref-popover p {\n  line-height: 1.8;\n}\n\n.ref-number,\nspan.v .vl {\n  font-size: 70%;\n  font-weight: 600;\n  opacity: 0.5;\n  padding: 1px 2px;\n  position: relative;\n  top: -1px;\n  margin: 0 3px;\n  line-height: 1;\n  background: rgba(0, 0, 0, 0.3);\n  border-radius: 3px;\n  text-decoration: none;\n}\n\nspan.v .b {\n  display: none;\n}\n\n/* Sidebar */\n.ref-sidebar {\n  padding: 12px;\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n\n.ref-sidebar-empty {\n  color: var(--text-muted);\n  font-style: italic;\n  font-size: var(--font-ui-small);\n  text-align: center;\n  margin-top: 24px;\n}\n\n.ref-sidebar-item {\n  padding: 12px 0;\n}\n\n.ref-sidebar .ref-sidebar-item:not(:last-of-type) {\n  border-bottom: 1px dotted rgba(255, 255, 255, 0.2);\n  padding-bottom: 20px;\n}\n\n.ref-sidebar-header {\n  display: flex;\n  flex-direction: row;\n  width: 100%;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 6px;\n}\n\n.ref-sidebar-ref {\n  font-size: 90%;\n  font-weight: 500;\n  color: var(--color-accent);\n  opacity: 0.5;\n}\n\n.ref-sidebar-wol-icon {\n  display: flex;\n  align-items: center;\n  color: var(--text-muted);\n  line-height: 1;\n}\n\n.ref-sidebar-wol-icon:hover {\n  color: var(--text-accent);\n}\n\n.ref-sidebar-wol-icon svg {\n  width: 13px;\n  height: 13px;\n}\n\n.ref-sidebar-body p {\n  font-size: var(--font-ui-small);\n  line-height: 1.7;\n  color: var(--text-normal);\n  margin: 0 0 6px 0;\n}\n\n.ref-sidebar-loading {\n  color: var(--text-muted);\n  font-style: italic;\n}\n\n.ref-sidebar-error {\n  color: var(--text-error);\n  font-size: var(--font-ui-smaller);\n}\n\n/* WOL search result cards */\n.ref-sidebar-wol-result {\n  font-size: var(--font-ui-small);\n  line-height: 1.6;\n  color: var(--text-normal);\n  padding: 6px 0;\n  border-top: 1px solid var(--background-modifier-border);\n}\n\n.ref-sidebar-wol-result:first-child {\n  border-top: none;\n  padding-top: 0;\n}\n\n.ref-sidebar-wol-result img {\n  max-width: 100%;\n  height: auto;\n}\n\n.ref-sidebar-wol-result a {\n  color: var(--text-accent);\n  text-decoration: none;\n}\n\n.ref-sidebar-wol-result a:hover {\n  text-decoration: underline;\n}\n\n/* Inline callout */\n.ref-callout-loading {\n  color: var(--text-muted);\n  font-style: italic;\n}\n';
+
 // main.ts
 var DEFAULT_SETTINGS = {
-  verseDisplayOption: "modal"
+  referenceDisplayOption: "modal"
 };
-var VersePlugin = class extends import_obsidian4.Plugin {
+var WolPlugin = class extends import_obsidian4.Plugin {
   async onload() {
-    console.log("Loading Verse Plugin");
+    console.log("Loading WOL Reference Tools");
+    this.styleEl = document.createElement("style");
+    this.styleEl.id = "wol-reference-tools-styles";
+    this.styleEl.textContent = styles_default;
+    document.head.appendChild(this.styleEl);
     await this.loadSettings();
-    this.verseParser = new VerseParser(this);
-    this.registerView(VIEW_TYPE_VERSE_SIDEBAR, (leaf) => new VerseSidebarView(leaf));
+    this.referenceParser = new ReferenceParser(this);
+    this.registerView(VIEW_TYPE_REFERENCE_SIDEBAR, (leaf) => new ReferenceSidebarView(leaf));
     this.registerMarkdownPostProcessor(async (el, _ctx) => {
-      this.verseParser.setupVerseLinks(el);
+      this.referenceParser.setupReferenceLinks(el);
     });
-    this.registerEditorExtension(createVerseEditorPlugin(this));
+    this.registerEditorExtension(createReferenceEditorPlugin(this));
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
         this.updateSidebar(file);
@@ -645,38 +691,50 @@ var VersePlugin = class extends import_obsidian4.Plugin {
         this.updateSidebar(this.app.workspace.getActiveFile());
       }, 500))
     );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        this.updateSidebar(this.app.workspace.getActiveFile());
+      })
+    );
     this.app.workspace.onLayoutReady(async () => {
       await this.activateSidebar();
       this.updateSidebar(this.app.workspace.getActiveFile());
     });
-    this.addSettingTab(new VerseSettingTab(this.app, this));
+    this.addSettingTab(new WolSettingTab(this.app, this));
     this.addCommand({
-      id: "clear-verse-cache",
-      name: "Clear verse cache",
+      id: "clear-reference-cache",
+      name: "Clear reference cache",
       callback: () => {
-        clearVerseCache();
-        new import_obsidian4.Notice("Verse cache cleared.");
+        clearReferenceCache();
+        new import_obsidian4.Notice("Reference cache cleared.");
       }
     });
   }
   onunload() {
-    console.log("Unloading Verse Plugin");
+    var _a;
+    console.log("Unloading WOL Reference Tools");
+    (_a = this.styleEl) == null ? void 0 : _a.remove();
   }
   async activateSidebar() {
     const { workspace } = this.app;
-    if (workspace.getLeavesOfType(VIEW_TYPE_VERSE_SIDEBAR).length > 0)
+    if (workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR).length > 0)
       return;
     const leaf = workspace.getRightLeaf(false);
     if (leaf) {
-      await leaf.setViewState({ type: VIEW_TYPE_VERSE_SIDEBAR, active: true });
+      await leaf.setViewState({ type: VIEW_TYPE_REFERENCE_SIDEBAR, active: true });
     }
   }
   updateSidebar(file) {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_VERSE_SIDEBAR);
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR);
     if (leaves.length === 0)
       return;
+    const rightSplit = this.app.workspace.rightSplit;
+    if (rightSplit == null ? void 0 : rightSplit.collapsed)
+      return;
     const view = leaves[0].view;
-    view.update(file);
+    if (view instanceof ReferenceSidebarView) {
+      view.update(file);
+    }
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -685,7 +743,7 @@ var VersePlugin = class extends import_obsidian4.Plugin {
     await this.saveData(this.settings);
   }
 };
-var VerseSettingTab = class extends import_obsidian4.PluginSettingTab {
+var WolSettingTab = class extends import_obsidian4.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -693,14 +751,14 @@ var VerseSettingTab = class extends import_obsidian4.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Verse Plugin Settings" });
-    new import_obsidian4.Setting(containerEl).setName("Verse Display Option").setDesc("Choose how verse references are displayed when clicked.").addDropdown((dropdown) => dropdown.addOption("modal", "Modal Dialog").addOption("popover", "Pop-over").setValue(this.plugin.settings.verseDisplayOption).onChange(async (value) => {
-      this.plugin.settings.verseDisplayOption = value;
+    containerEl.createEl("h2", { text: "WOL Reference Tools Settings" });
+    new import_obsidian4.Setting(containerEl).setName("Reference Display Option").setDesc("Choose how references are displayed when clicked.").addDropdown((dropdown) => dropdown.addOption("modal", "Modal Dialog").addOption("popover", "Pop-over").setValue(this.plugin.settings.referenceDisplayOption).onChange(async (value) => {
+      this.plugin.settings.referenceDisplayOption = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian4.Setting(containerEl).setName("Verse cache").setDesc("Fetched verses are cached in memory for the current session. Clear the cache to force fresh fetches.").addButton((button) => button.setButtonText("Clear cache").onClick(() => {
-      clearVerseCache();
-      new import_obsidian4.Notice("Verse cache cleared.");
+    new import_obsidian4.Setting(containerEl).setName("Reference cache").setDesc("Fetched references are cached in memory for the current session. Clear the cache to force fresh fetches.").addButton((button) => button.setButtonText("Clear cache").onClick(() => {
+      clearReferenceCache();
+      new import_obsidian4.Notice("Reference cache cleared.");
     }));
   }
 };

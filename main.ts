@@ -1,43 +1,51 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, debounce } from 'obsidian';
-import { clearVerseCache } from './verseService';
-import { VerseParser } from './VerseParser';
-import { VerseSidebarView, VIEW_TYPE_VERSE_SIDEBAR } from './VerseSidebarView';
-import { createVerseEditorPlugin } from './VerseEditorPlugin';
+import { clearReferenceCache } from './referenceService';
+import { ReferenceParser } from './ReferenceParser';
+import { ReferenceSidebarView, VIEW_TYPE_REFERENCE_SIDEBAR } from './ReferenceSidebarView';
+import { createReferenceEditorPlugin } from './ReferenceEditorPlugin';
+import styles from './styles.css';
 
 // Define the display options
-export type VerseDisplayOption = 'modal' | 'popover';
+export type ReferenceDisplayOption = 'modal' | 'popover';
 
 // Define the interface for our plugin settings
-export interface VersePluginSettings {
-	verseDisplayOption: VerseDisplayOption;
+export interface WolPluginSettings {
+	referenceDisplayOption: ReferenceDisplayOption;
 }
 
 // Define the default settings
-const DEFAULT_SETTINGS: VersePluginSettings = {
-	verseDisplayOption: 'modal',
+const DEFAULT_SETTINGS: WolPluginSettings = {
+	referenceDisplayOption: 'modal',
 }
 
-export default class VersePlugin extends Plugin {
-	settings: VersePluginSettings;
-	private verseParser: VerseParser;
+export default class WolPlugin extends Plugin {
+	settings: WolPluginSettings;
+	private referenceParser: ReferenceParser;
+
+	private styleEl: HTMLStyleElement;
 
 	async onload() {
-		console.log('Loading Verse Plugin');
+		console.log('Loading WOL Reference Tools');
+
+		this.styleEl = document.createElement('style');
+		this.styleEl.id = 'wol-reference-tools-styles';
+		this.styleEl.textContent = styles;
+		document.head.appendChild(this.styleEl);
 
 		await this.loadSettings();
 
-		this.verseParser = new VerseParser(this);
+		this.referenceParser = new ReferenceParser(this);
 
 		// Register the sidebar view
-		this.registerView(VIEW_TYPE_VERSE_SIDEBAR, (leaf) => new VerseSidebarView(leaf));
+		this.registerView(VIEW_TYPE_REFERENCE_SIDEBAR, (leaf) => new ReferenceSidebarView(leaf));
 
 		// Register the markdown post processor
 		this.registerMarkdownPostProcessor(async (el, _ctx) => {
-			this.verseParser.setupVerseLinks(el);
+			this.referenceParser.setupReferenceLinks(el);
 		});
 
 		// Register Live Preview editor extension
-		this.registerEditorExtension(createVerseEditorPlugin(this));
+		this.registerEditorExtension(createReferenceEditorPlugin(this));
 
 		// File-open: repopulate sidebar whenever a new file is opened
 		this.registerEvent(
@@ -53,6 +61,13 @@ export default class VersePlugin extends Plugin {
 			}, 500))
 		);
 
+		// Layout-change: trigger fetch when right panel is expanded
+		this.registerEvent(
+			this.app.workspace.on('layout-change', () => {
+				this.updateSidebar(this.app.workspace.getActiveFile());
+			})
+		);
+
 		// Once the workspace is ready, open the sidebar and populate it
 		this.app.workspace.onLayoutReady(async () => {
 			await this.activateSidebar();
@@ -60,39 +75,45 @@ export default class VersePlugin extends Plugin {
 		});
 
 		// Add settings tab
-		this.addSettingTab(new VerseSettingTab(this.app, this));
+		this.addSettingTab(new WolSettingTab(this.app, this));
 
-		// Command palette: clear verse cache
+		// Command palette: clear reference cache
 		this.addCommand({
-			id: 'clear-verse-cache',
-			name: 'Clear verse cache',
+			id: 'clear-reference-cache',
+			name: 'Clear reference cache',
 			callback: () => {
-				clearVerseCache();
-				new Notice('Verse cache cleared.');
+				clearReferenceCache();
+				new Notice('Reference cache cleared.');
 			},
 		});
 	}
 
 	onunload() {
-		console.log('Unloading Verse Plugin');
+		console.log('Unloading WOL Reference Tools');
+		this.styleEl?.remove();
 	}
 
 	private async activateSidebar() {
 		const { workspace } = this.app;
-		if (workspace.getLeavesOfType(VIEW_TYPE_VERSE_SIDEBAR).length > 0) return;
+		if (workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR).length > 0) return;
 
 		const leaf = workspace.getRightLeaf(false);
 		if (leaf) {
-			await leaf.setViewState({ type: VIEW_TYPE_VERSE_SIDEBAR, active: true });
+			await leaf.setViewState({ type: VIEW_TYPE_REFERENCE_SIDEBAR, active: true });
 		}
 	}
 
 	private updateSidebar(file: TFile | null) {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_VERSE_SIDEBAR);
+		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_REFERENCE_SIDEBAR);
 		if (leaves.length === 0) return;
 
-		const view = leaves[0].view as VerseSidebarView;
-		view.update(file);
+		const rightSplit = this.app.workspace.rightSplit;
+		if ((rightSplit as any)?.collapsed) return;
+
+		const view = leaves[0].view;
+		if (view instanceof ReferenceSidebarView) {
+			view.update(file);
+		}
 	}
 
 	async loadSettings() {
@@ -104,10 +125,10 @@ export default class VersePlugin extends Plugin {
 	}
 }
 
-class VerseSettingTab extends PluginSettingTab {
-	plugin: VersePlugin;
+class WolSettingTab extends PluginSettingTab {
+	plugin: WolPlugin;
 
-	constructor(app: App, plugin: VersePlugin) {
+	constructor(app: App, plugin: WolPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -116,28 +137,28 @@ class VerseSettingTab extends PluginSettingTab {
 		const {containerEl} = this;
 
 		containerEl.empty();
-		containerEl.createEl('h2', {text: 'Verse Plugin Settings'});
+		containerEl.createEl('h2', {text: 'WOL Reference Tools Settings'});
 
 		new Setting(containerEl)
-			.setName('Verse Display Option')
-			.setDesc('Choose how verse references are displayed when clicked.')
+			.setName('Reference Display Option')
+			.setDesc('Choose how references are displayed when clicked.')
 			.addDropdown(dropdown => dropdown
 				.addOption('modal', 'Modal Dialog')
 				.addOption('popover', 'Pop-over')
-				.setValue(this.plugin.settings.verseDisplayOption)
+				.setValue(this.plugin.settings.referenceDisplayOption)
 				.onChange(async (value) => {
-					this.plugin.settings.verseDisplayOption = value as VerseDisplayOption;
+					this.plugin.settings.referenceDisplayOption = value as ReferenceDisplayOption;
 					await this.plugin.saveSettings();
 				}));
 
 		new Setting(containerEl)
-			.setName('Verse cache')
-			.setDesc('Fetched verses are cached in memory for the current session. Clear the cache to force fresh fetches.')
+			.setName('Reference cache')
+			.setDesc('Fetched references are cached in memory for the current session. Clear the cache to force fresh fetches.')
 			.addButton(button => button
 				.setButtonText('Clear cache')
 				.onClick(() => {
-					clearVerseCache();
-					new Notice('Verse cache cleared.');
+					clearReferenceCache();
+					new Notice('Reference cache cleared.');
 				}));
 	}
 }

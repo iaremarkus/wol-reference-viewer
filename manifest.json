@@ -1,9 +1,9 @@
 {
-  "id": "verse-popover",
-  "name": "Verse Popover",
+  "id": "wol-reference-viewer",
+  "name": "WOL Reference Tools",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "Fetches a verse from wol.jw.org and displays it in a popver",
+  "description": "Look up Bible verses and WOL research articles inline in your notes using !!reference!! syntax.",
   "author": "@iaremarkus",
   "authorUrl": "https://github.com/iaremarkusdev",
   "isDesktopOnly": false

@@ -1,29 +1,30 @@
 import { App } from 'obsidian';
-import { VerseData } from './types';
-import { fetchVerse } from './verseService';
-import { renderVerseText } from './verse-stylist';
+import { ReferenceData } from './types';
+import { fetchReference } from './referenceService';
 
-export class VersePopover {
+export class ReferencePopover {
     private app: App;
     private popoverEl: HTMLElement | null = null;
-    private static instance: VersePopover | null = null;
+    private showGeneration = 0;
+    private static instance: ReferencePopover | null = null;
 
     private constructor(app: App) {
         this.app = app;
     }
 
-    public static getInstance(app: App): VersePopover {
-        if (!VersePopover.instance) {
-            VersePopover.instance = new VersePopover(app);
+    public static getInstance(app: App): ReferencePopover {
+        if (!ReferencePopover.instance) {
+            ReferencePopover.instance = new ReferencePopover(app);
         }
-        return VersePopover.instance;
+        return ReferencePopover.instance;
     }
 
     public async show(targetEl: HTMLElement, verseRef: string) {
         this.hide();
+        const generation = ++this.showGeneration;
 
         this.popoverEl = document.createElement('div');
-        this.popoverEl.addClass('verse-popover');
+        this.popoverEl.addClass('ref-popover');
         this.popoverEl.style.position = 'absolute';
         this.popoverEl.style.zIndex = '9999';
         this.popoverEl.style.maxWidth = '300px';
@@ -36,35 +37,31 @@ export class VersePopover {
         this.popoverEl.style.fontSize = 'var(--font-ui-small)';
         this.popoverEl.style.lineHeight = '1.5';
 
-        this.popoverEl.createEl('p', { text: 'Loading verse\u2026', cls: 'verse-popover-loading' });
+        this.popoverEl.createEl('p', { text: 'Loading\u2026', cls: 'ref-popover-loading' });
 
         document.body.appendChild(this.popoverEl);
         this.positionPopover(targetEl);
 
-        const data = await fetchVerse(verseRef);
-        this.updateContent(data, verseRef);
+        const data = await fetchReference(verseRef);
+        if (generation !== this.showGeneration) return; // stale, another show() ran
+        this.updateContent(data);
 
         document.addEventListener('click', this.handleOutsideClick);
         this.popoverEl.addEventListener('click', (e) => e.stopPropagation());
     }
 
-    private updateContent(verseData: VerseData | null, verseRef: string) {
+    private updateContent(data: ReferenceData | null) {
         if (!this.popoverEl) return;
 
         this.popoverEl.empty();
 
-        if (verseData) {
-            const p = this.popoverEl.createEl('p');
-            renderVerseText(p, verseData.text, verseRef);
+        if (!data || data.results.length === 0) {
+            this.popoverEl.createEl('p', { text: 'No results found.' });
+            return;
+        }
 
-            const wolLink = this.popoverEl.createEl('a', {
-                text: 'View on WOL',
-                href: `https://wol.jw.org/en/wol/l/r1/lp-e?q=${encodeURIComponent(verseData.reference)}`,
-                cls: 'verse-popover-wol-link',
-            });
-            wolLink.setAttr('target', '_blank');
-        } else {
-            this.popoverEl.createEl('p', { text: 'Verse not found.' });
+        for (const html of data.results) {
+            this.popoverEl.createDiv({ cls: 'ref-popover-result' }).innerHTML = html;
         }
     }
 
