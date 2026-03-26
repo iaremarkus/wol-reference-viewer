@@ -14,6 +14,7 @@ async function runBuild() {
         format: 'cjs',
         target: 'es2018',
         external: ['obsidian', '@codemirror/view', '@codemirror/state'],
+        loader: { '.css': 'text' },
         outdir: '.',
     };
 

@@ -1,13 +1,5 @@
-export interface VerseData {
-    type: 'verse';
-    text: string;
-    reference: string;
-    translation?: string;
+export interface ReferenceData {
+    type: 'reference';
+    ref: string;           // the original query string
+    results: string[];     // HTML strings from each result
 }
-
-export interface WolData {
-    type: 'wol';
-    results: string[]; // outerHTML of each article.scalableui element
-}
-
-export type ReferenceData = VerseData | WolData;

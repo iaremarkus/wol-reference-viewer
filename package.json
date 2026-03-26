@@ -1,15 +1,15 @@
 {
-	"name": "obsidian-verse-plugin",
+	"name": "obsidian-wol-reference-viewer",
 	"version": "1.0.0",
-	"description": "An Obsidian plugin that fetches and displays Bible verses from IAM Research Suite API",
+	"description": "An Obsidian plugin that looks up Bible verses and WOL research articles inline in your notes using !!reference!! syntax.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
-	"keywords": ["obsidian", "bible", "verses", "research"],
-	"author": "Your Name",
+	"keywords": ["obsidian", "bible", "verses", "wol", "jw"],
+	"author": "@iaremarkus",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
