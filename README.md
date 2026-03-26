@@ -1,6 +1,6 @@
 # WOL Reference Tools
 
-An [Obsidian](https://obsidian.md) plugin that lets you look up Bible verses and references from wol.jw.org, and add them to your notes inline, in a modal or popover, or in the sidebar.
+An [Obsidian](https://obsidian.md) plugin that lets you look up Bible verses and references from [wol.jw.org](https://wol.jw.org), and add them to your notes inline, in a modal or popover, or in the sidebar.
 
 ### How it works
 
@@ -26,7 +26,7 @@ To show a verse inline within your note as you're typing, add a `>` after the do
 !!John 3:16!!>
 ```
 
-Add `scriptures` to your frontmatter using the double exclamation marks to automatically include references in your notes:
+Add `scriptures` to your frontmatter using the double exclamation marks and combine that with a `dataviewjs` query to show any references you've added:
 
 ```
 ---
@@ -35,6 +35,13 @@ scriptures:
   - "!!Revelation 12:7, 9!!"
 ---
 ```
+
+```dataviewjs
+const scriptures = dv.current().scriptures ?? [];
+scriptures.forEach(s => dv.paragraph(s + "> <br />"));
+```
+
+---
 
 https://iaremarkus.s3.af-south-1.amazonaws.com/wol-reference-viewer-demo.mp4
 
