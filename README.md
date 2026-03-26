@@ -1,8 +1,42 @@
 # WOL Reference Tools
 
-An [Obsidian](https://obsidian.md) plugin that lets you look up Bible verses and WOL research articles directly inside your notes.
+An [Obsidian](https://obsidian.md) plugin that lets you look up Bible verses and references from wol.jw.org, and add them to your notes inline, in a modal or popover, or in the sidebar.
 
-Wrap any reference in `!!double exclamation marks!!` and it becomes a clickable link. Click it to see the full text from [wol.jw.org](https://wol.jw.org) in a modal or popover. A sidebar panel automatically lists and loads all references in the active note.
+### How it works
+
+ℹ️ The plugin sends the 'value' of the reference - whatever is within the `!!`, and send that value to a Cloudflare worker, which does a search on wol.jw.org, eg: `[https://wol.jw.org/en/wol/l/r1/lp-e?q=ps83:18](https://wol.jw.org/en/wol/l/r1/lp-e?q=ps83:18)`. It then uses [cheerio](https://cheerio.js.org/) to parse the HTML, and returns an object containing the reference text and the verse text.
+
+```
+{
+  "results": [
+    "<p class=\"line\"><span class=\"verse\"><span class=\"verse-number\">18 </span>May people know that you, whose name is Jehovah,</span></p><p class=\"line-secondary\"><span class=\"verse\">You alone are the Most High over all the earth.</span></p>"
+  ]
+}
+```
+
+Some light formatting is applied for styling purposes, but the results are left otherwise unchanged.
+
+### How to use
+
+Wrap any reference in `!!double exclamation marks!!` and it becomes a clickable link. Click it to see the full text from [wol.jw.org](https://wol.jw.org) in a modal or popover. The sidebar panel automatically lists and loads all references in the active note.
+
+To show a verse inline within your note as you're typing, add a `>` after the double exclamation marks:
+
+```
+!!John 3:16!!>
+```
+
+Add `scriptures` to your frontmatter using the double exclamation marks to automatically include references in your notes:
+
+```
+---
+scriptures:
+  - "!!Daniel 12:1!!"
+  - "!!Revelation 12:7, 9!!"
+---
+```
+
+https://iaremarkus.s3.af-south-1.amazonaws.com/wol-reference-viewer-demo.mp4
 
 ---
 
@@ -18,37 +52,21 @@ Wrap any reference in `!!double exclamation marks!!` and it becomes a clickable 
 
 ## Usage
 
-| Syntax | Result |
-|---|---|
-| `!!John 3:16!!` | Clickable inline link; click to open result |
-| `!!Isaiah 40:8!!` | Works for any Bible book or WOL search term |
-| `!!John 3:16!!>` | Renders result inline as a callout block |
+| Syntax                       | Result                                          |
+| ---------------------------- | ----------------------------------------------- |
+| `!!John 3:16!!`              | Clickable inline link; click to open result     |
+| `!!Isaiah 40:8!!`            | Works for any Bible book or WOL search term     |
+| `!!John 3:16!!>`             | Renders result inline as a callout block        |
 | `!!John 3:16; Romans 8:28!!` | Semicolons separate multiple refs in one marker |
-
----
-
-## Installation
-
-### Via BRAT (recommended for pre-release)
-
-1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat)
-2. In BRAT settings, add this repository URL
-3. Enable **WOL Reference Tools** in Obsidian Settings → Community plugins
-
-### Manual
-
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release
-2. Copy them to `<vault>/.obsidian/plugins/wol-reference-viewer/`
-3. Enable **WOL Reference Tools** in Obsidian Settings → Community plugins
 
 ---
 
 ## Settings
 
-| Setting | Description |
-|---|---|
+| Setting                  | Description                                                 |
+| ------------------------ | ----------------------------------------------------------- |
 | Reference Display Option | Choose **Modal Dialog** or **Pop-over** for click behaviour |
-| Reference cache | Clear the in-memory cache to force fresh fetches |
+| Reference cache          | Clear the in-memory cache to force fresh fetches            |
 
 ---
 
