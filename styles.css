@@ -123,6 +123,8 @@
 .ref-popover {
   position: absolute;
   z-index: 9999;
+  top: var(--ref-popover-top, 0px);
+  left: var(--ref-popover-left, 0px);
   max-width: 300px;
   padding: 10px;
   border-radius: var(--radius-m);

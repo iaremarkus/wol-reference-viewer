@@ -20,17 +20,14 @@ class ReferenceInlineWidget extends WidgetType {
     eq(other: ReferenceInlineWidget): boolean { return this.ref === other.ref; }
 
     toDOM(): HTMLElement {
-        const wrap = document.createElement('div');
-        wrap.className = 'cm-ref-inline-result';
+        const wrap = createDiv({ cls: 'cm-ref-inline-result' });
 
-        const label = document.createElement('div');
-        label.className = 'cm-ref-inline-label';
+        const label = createDiv({ cls: 'cm-ref-inline-label' });
         label.textContent = this.ref;
         wrap.appendChild(label);
 
-        const body = document.createElement('div');
-        body.className = 'cm-ref-inline-body';
-        body.textContent = 'Loading\u2026';
+        const body = createDiv({ cls: 'cm-ref-inline-body' });
+        body.textContent = 'Loading…';
         wrap.appendChild(body);
 
         void fetchReference(this.ref).then(data => {
@@ -40,8 +37,7 @@ class ReferenceInlineWidget extends WidgetType {
                 return;
             }
             for (const html of data.results) {
-                const item = document.createElement('div');
-                item.className = 'cm-ref-inline-item';
+                const item = createDiv({ cls: 'cm-ref-inline-item' });
                 appendHTML(item, html);
                 body.appendChild(item);
             }

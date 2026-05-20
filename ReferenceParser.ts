@@ -18,7 +18,7 @@ export class ReferenceParser {
     }
 
     private transformReferenceMarkers(container: HTMLElement) {
-        const walker = document.createTreeWalker(
+        const walker = activeDocument.createTreeWalker(
             container,
             NodeFilter.SHOW_TEXT,
             {
@@ -32,9 +32,10 @@ export class ReferenceParser {
         );
 
         const textNodes: Node[] = [];
-        let node;
-        while ((node = walker.nextNode()) !== null) {
+        let node = walker.nextNode();
+        while (node !== null) {
             textNodes.push(node);
+            node = walker.nextNode();
         }
 
         for (const textNode of textNodes) {
@@ -50,27 +51,26 @@ export class ReferenceParser {
         let lastIndex = 0;
         let match;
 
-        const fragment = document.createDocumentFragment();
+        const fragment = createFragment();
         let calloutEl: HTMLElement | null = null;
 
         while ((match = regex.exec(text)) !== null) {
             if (match.index > lastIndex) {
-                fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                fragment.appendChild(activeDocument.createTextNode(text.substring(lastIndex, match.index)));
             }
 
             const ref = match[1];
             const isCallout = match[2] === '>';
 
             if (isCallout) {
-                const callout = document.createElement('div');
-                callout.className = 'callout ref-callout';
+                const callout = createDiv({ cls: 'callout ref-callout' });
                 callout.setAttribute('data-callout', 'wol-reference');
 
                 const titleEl = callout.createDiv({ cls: 'callout-title' });
                 titleEl.createDiv({ cls: 'callout-title-inner', text: ref });
 
                 const contentEl = callout.createDiv({ cls: 'callout-content' });
-                contentEl.createEl('p', { cls: 'ref-callout-loading', text: 'Loading\u2026' });
+                contentEl.createEl('p', { cls: 'ref-callout-loading', text: 'Loading…' });
 
                 fragment.appendChild(callout);
                 calloutEl = callout;
@@ -87,12 +87,11 @@ export class ReferenceParser {
                     }
                 });
             } else {
-                const refElement = document.createElement('span');
-                refElement.className = isBibleVerse(ref)
-                    ? 'wol-ref-link'
-                    : 'wol-ref-link wol-ref-external';
-                refElement.setAttribute('data-ref', ref);
-                refElement.textContent = ref;
+                const refElement = createSpan({
+                    cls: isBibleVerse(ref) ? 'wol-ref-link' : 'wol-ref-link wol-ref-external',
+                    attr: { 'data-ref': ref },
+                    text: ref,
+                });
 
                 fragment.appendChild(refElement);
             }
@@ -101,7 +100,7 @@ export class ReferenceParser {
         }
 
         if (lastIndex < text.length) {
-            fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+            fragment.appendChild(activeDocument.createTextNode(text.substring(lastIndex)));
         }
 
         const parent = textNode.parentNode;
