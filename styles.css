@@ -59,7 +59,7 @@
   font-size: 120%;
 }
 
-.ref-modal .modal-content {
+.modal-content .ref-modal {
   padding: 20px;
   font-family: var(--font-family);
 }
@@ -266,8 +266,8 @@
 
 .cm-ref-inline-result,
 .ref-callout {
-  background-color: transparent;
-  box-shadow: none;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .cm-ref-inline-body,
