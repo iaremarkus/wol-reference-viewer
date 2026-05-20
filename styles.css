@@ -81,39 +81,39 @@
   text-align: right;
 }
 
-.ref-modal-result {
+.ref-modal .ref-modal-result {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 10px 0 !important;
+  padding: 10px 0;
 }
 
-.ref-modal-result p {
-  margin: 0 !important;
+.ref-modal .ref-modal-result p {
+  margin: 0;
 }
 
 .ref-modal-result > li {
   list-style: none;
 }
 
-.ref-modal-result ol > li::marker,
-.ref-modal-result ul > li::marker {
-  display: none !important;
+.ref-modal .ref-modal-result ol > li::marker,
+.ref-modal .ref-modal-result ul > li::marker {
+  display: none;
 }
 
-.ref-modal-button-container {
+.ref-modal .ref-modal-button-container {
   margin-top: 5px;
 }
 
-.ref-modal-button-container button {
+.ref-modal .ref-modal-button-container button {
   font-size: 80%;
-  font-weight: 600 !important;
+  font-weight: 600;
 }
 
-.mod-cta {
-  padding: 8px 10px 10px !important;
-  line-height: 1 !important;
-  height: auto !important;
+.ref-modal .mod-cta {
+  padding: 8px 10px 10px;
+  line-height: 1;
+  height: auto;
 }
 
 /* ============================================================
@@ -123,6 +123,8 @@
 .ref-popover {
   position: absolute;
   z-index: 9999;
+  top: var(--ref-popover-top, 0px);
+  left: var(--ref-popover-left, 0px);
   max-width: 300px;
   padding: 10px;
   border-radius: var(--radius-m);
@@ -278,16 +280,16 @@
   box-shadow: none;
 }
 
-.cm-ref-inline-body p,
+.cm-ref-inline-result .cm-ref-inline-body p,
 .ref-callout .callout-content p {
-  margin: 0 !important;
+  margin: 0;
 }
 
-.cm-ref-inline-label,
+.cm-ref-inline-result .cm-ref-inline-label,
 .ref-callout .callout-title {
   font-size: 90%;
   font-weight: 500;
-  color: var(--text-normal) !important;
+  color: var(--text-normal);
   margin-left: 3%;
   width: 94%;
   background-color: rgba(0, 0, 0, 0.2);
@@ -356,13 +358,21 @@ span.v .b {
   display: none;
 }
 
-.resultItems {
-  margin: 0 !important;
-  padding: 0 !important;
+.ref-modal-result .resultItems,
+.ref-popover-result .resultItems,
+.ref-sidebar-wol-result .resultItems,
+.ref-callout-result .resultItems,
+.cm-ref-inline-item .resultItems {
+  margin: 0;
+  padding: 0;
 }
 
-.resultItems ::marker {
-  display: none !important;
-  opacity: 0 !important;
+.ref-modal-result .resultItems ::marker,
+.ref-popover-result .resultItems ::marker,
+.ref-sidebar-wol-result .resultItems ::marker,
+.ref-callout-result .resultItems ::marker,
+.cm-ref-inline-item .resultItems ::marker {
+  display: none;
+  opacity: 0;
   color: transparent;
 }

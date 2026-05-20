@@ -63,7 +63,7 @@ export class ReferenceSidebarView extends ItemView {
 
         for (let i = 0; i < refs.length; i++) {
             if (signal.aborted || generation !== this.updateGeneration) return;
-            if (i > 0 && !isCached(refs[i])) await new Promise(resolve => setTimeout(resolve, 1000));
+            if (i > 0 && !isCached(refs[i])) await new Promise(resolve => activeWindow.setTimeout(resolve, 1000));
             if (signal.aborted || generation !== this.updateGeneration) return;
             const data = await fetchReference(refs[i], signal);
             if (signal.aborted || generation !== this.updateGeneration) return;

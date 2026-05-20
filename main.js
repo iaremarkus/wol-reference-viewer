@@ -153,16 +153,15 @@ var _ReferencePopover = class {
   async show(targetEl, verseRef) {
     this.hide();
     const generation = ++this.showGeneration;
-    this.popoverEl = document.createElement("div");
-    this.popoverEl.addClass("ref-popover");
+    this.popoverEl = activeDocument.createDiv({ cls: "ref-popover" });
     this.popoverEl.createEl("p", { text: "Loading\u2026", cls: "ref-popover-loading" });
-    document.body.appendChild(this.popoverEl);
+    activeDocument.body.appendChild(this.popoverEl);
     this.positionPopover(targetEl);
     const data = await fetchReference(verseRef);
     if (generation !== this.showGeneration)
       return;
     this.updateContent(data);
-    document.addEventListener("click", this.handleOutsideClick);
+    activeDocument.addEventListener("click", this.handleOutsideClick);
     this.popoverEl.addEventListener("click", (e) => e.stopPropagation());
   }
   updateContent(data) {
@@ -190,14 +189,16 @@ var _ReferencePopover = class {
     if (top + popoverRect.height > window.innerHeight && targetRect.top > popoverRect.height) {
       top = targetRect.top + window.scrollY - popoverRect.height - 5;
     }
-    this.popoverEl.style.top = `${top}px`;
-    this.popoverEl.style.left = `${left}px`;
+    this.popoverEl.setCssProps({
+      "--ref-popover-top": `${top}px`,
+      "--ref-popover-left": `${left}px`
+    });
   }
   hide() {
     if (this.popoverEl) {
       this.popoverEl.remove();
       this.popoverEl = null;
-      document.removeEventListener("click", this.handleOutsideClick);
+      activeDocument.removeEventListener("click", this.handleOutsideClick);
     }
   }
 };
@@ -302,7 +303,7 @@ var ReferenceParser = class {
     this.setupReferenceClickHandler(container);
   }
   transformReferenceMarkers(container) {
-    const walker = document.createTreeWalker(
+    const walker = activeDocument.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
       {
@@ -315,9 +316,10 @@ var ReferenceParser = class {
       }
     );
     const textNodes = [];
-    let node;
-    while ((node = walker.nextNode()) !== null) {
+    let node = walker.nextNode();
+    while (node !== null) {
       textNodes.push(node);
+      node = walker.nextNode();
     }
     for (const textNode of textNodes) {
       if (textNode.nodeValue && /!!(.+?)!!(>?)/.test(textNode.nodeValue)) {
@@ -330,17 +332,16 @@ var ReferenceParser = class {
     const regex = /!!(.+?)!!(>?)/g;
     let lastIndex = 0;
     let match;
-    const fragment = document.createDocumentFragment();
+    const fragment = createFragment();
     let calloutEl = null;
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+        fragment.appendChild(activeDocument.createTextNode(text.substring(lastIndex, match.index)));
       }
       const ref = match[1];
       const isCallout = match[2] === ">";
       if (isCallout) {
-        const callout = document.createElement("div");
-        callout.className = "callout ref-callout";
+        const callout = createDiv({ cls: "callout ref-callout" });
         callout.setAttribute("data-callout", "wol-reference");
         const titleEl = callout.createDiv({ cls: "callout-title" });
         titleEl.createDiv({ cls: "callout-title-inner", text: ref });
@@ -360,16 +361,17 @@ var ReferenceParser = class {
           }
         });
       } else {
-        const refElement = document.createElement("span");
-        refElement.className = isBibleVerse(ref) ? "wol-ref-link" : "wol-ref-link wol-ref-external";
-        refElement.setAttribute("data-ref", ref);
-        refElement.textContent = ref;
+        const refElement = createSpan({
+          cls: isBibleVerse(ref) ? "wol-ref-link" : "wol-ref-link wol-ref-external",
+          attr: { "data-ref": ref },
+          text: ref
+        });
         fragment.appendChild(refElement);
       }
       lastIndex = match.index + match[0].length;
     }
     if (lastIndex < text.length) {
-      fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+      fragment.appendChild(activeDocument.createTextNode(text.substring(lastIndex)));
     }
     const parent = textNode.parentNode;
     parent == null ? void 0 : parent.replaceChild(fragment, textNode);
@@ -464,7 +466,7 @@ var ReferenceSidebarView = class extends import_obsidian3.ItemView {
       if (signal.aborted || generation !== this.updateGeneration)
         return;
       if (i > 0 && !isCached(refs[i]))
-        await new Promise((resolve) => setTimeout(resolve, 1e3));
+        await new Promise((resolve) => activeWindow.setTimeout(resolve, 1e3));
       if (signal.aborted || generation !== this.updateGeneration)
         return;
       const data = await fetchReference(refs[i], signal);
@@ -552,14 +554,11 @@ var ReferenceInlineWidget = class extends import_view.WidgetType {
     return this.ref === other.ref;
   }
   toDOM() {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-ref-inline-result";
-    const label = document.createElement("div");
-    label.className = "cm-ref-inline-label";
+    const wrap = createDiv({ cls: "cm-ref-inline-result" });
+    const label = createDiv({ cls: "cm-ref-inline-label" });
     label.textContent = this.ref;
     wrap.appendChild(label);
-    const body = document.createElement("div");
-    body.className = "cm-ref-inline-body";
+    const body = createDiv({ cls: "cm-ref-inline-body" });
     body.textContent = "Loading\u2026";
     wrap.appendChild(body);
     void fetchReference(this.ref).then((data) => {
@@ -569,8 +568,7 @@ var ReferenceInlineWidget = class extends import_view.WidgetType {
         return;
       }
       for (const html of data.results) {
-        const item = document.createElement("div");
-        item.className = "cm-ref-inline-item";
+        const item = createDiv({ cls: "cm-ref-inline-item" });
         appendHTML(item, html);
         body.appendChild(item);
       }

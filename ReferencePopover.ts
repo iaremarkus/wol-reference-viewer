@@ -23,19 +23,18 @@ export class ReferencePopover {
         this.hide();
         const generation = ++this.showGeneration;
 
-        this.popoverEl = document.createElement('div');
-        this.popoverEl.addClass('ref-popover');
+        this.popoverEl = activeDocument.createDiv({ cls: 'ref-popover' });
 
-        this.popoverEl.createEl('p', { text: 'Loading\u2026', cls: 'ref-popover-loading' });
+        this.popoverEl.createEl('p', { text: 'Loading…', cls: 'ref-popover-loading' });
 
-        document.body.appendChild(this.popoverEl);
+        activeDocument.body.appendChild(this.popoverEl);
         this.positionPopover(targetEl);
 
         const data = await fetchReference(verseRef);
         if (generation !== this.showGeneration) return; // stale, another show() ran
         this.updateContent(data);
 
-        document.addEventListener('click', this.handleOutsideClick);
+        activeDocument.addEventListener('click', this.handleOutsideClick);
         this.popoverEl.addEventListener('click', (e) => e.stopPropagation());
     }
 
@@ -70,15 +69,17 @@ export class ReferencePopover {
             top = targetRect.top + window.scrollY - popoverRect.height - 5;
         }
 
-        this.popoverEl.style.top = `${top}px`;
-        this.popoverEl.style.left = `${left}px`;
+        this.popoverEl.setCssProps({
+            '--ref-popover-top': `${top}px`,
+            '--ref-popover-left': `${left}px`,
+        });
     }
 
     public hide() {
         if (this.popoverEl) {
             this.popoverEl.remove();
             this.popoverEl = null;
-            document.removeEventListener('click', this.handleOutsideClick);
+            activeDocument.removeEventListener('click', this.handleOutsideClick);
         }
     }
 
